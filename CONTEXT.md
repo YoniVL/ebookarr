@@ -13,6 +13,14 @@ coderen — alle wijzigingen door Claude Code. De app moet blijven werken via
 `start.bat` (dubbelklik) en kan op de achtergrond draaien via de Windows
 Taakplanner (`install-task.bat`).
 
+**Git/GitHub (sinds 2026-09-22)**: de map is een git-repo, remote `origin` ->
+https://github.com/YoniVL/ebookarr (branch `main`). `.gitignore` sluit `venv/`,
+`ebookarr.db` (bevat versleutelde credentials + de boekenlijst van de gebruiker),
+`backups/` en `*.log*` uit — die horen nooit gecommit te worden. Gebruiker wil
+dat wijzigingen **automatisch gecommit en gepusht** worden (geen aparte vraag
+per keer nodig) — wel altijd even de staged diff checken op iets dat op een
+geheim lijkt voor het committen.
+
 ## Visueel herontwerp (v47/v48) — "Nocturne"
 
 De hele UI (`app/static/index.html`) is nagebouwd volgens de Claude Design-
