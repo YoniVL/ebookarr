@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EbookArr</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    /* ---- Nocturne-tokens — exact uit "EbookArr Herontwerp" ---- */
+    --font: -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --bg:#161826; --panel:#1f2231; --panel2:#191b28; --panel3:#262a3a;
+    --border:#2e3242; --border-strong:#3f424d;
+
+    --text:#e9e9ed; --muted:#9397ab; --faint:#6b6f80; --tag-tx:#c3c6d2;
+    --accent:#9184d9; --accent-hi:#b5abfc;
+    --accent-soft:rgba(145,132,217,.14); --accent-line:rgba(145,132,217,.45);
+    --accent-hover:rgba(145,132,217,.26);
+
+    --ok:#5cb98c;     --ok-soft:rgba(92,185,140,.14);   --ok-line:rgba(92,185,140,.32);   --ok-tx:#8ed4ad;
+    --warn:#d8a94a;   --warn-soft:rgba(216,169,74,.14); --warn-line:rgba(216,169,74,.32); --warn-tx:#e6c481;
+    --danger:#d9695f; --danger-soft:rgba(217,105,95,.14);--danger-line:rgba(217,105,95,.45);--danger-tx:#eda199;
+    --info:#6b9fdd;   --info-soft:rgba(107,159,221,.14);--info-line:rgba(107,159,221,.32);--info-tx:#a3c5ee;
+
+    --r-sm:4px; --r-md:8px; --r-lg:14px;
+    --sh-1:0 0 0 1px var(--border);
+    --sh-2:0 0 0 1px var(--border-strong), 0 6px 18px rgba(0,0,0,.55);
+    --sh-3:0 0 0 1px var(--border-strong), 0 24px 60px rgba(0,0,0,.65);
+    --cover-grad:linear-gradient(160deg,#2b2f42,#1b1e2b);
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font);
+         font-size:14px; line-height:1.55; margin:0; -webkit-font-smoothing:antialiased; }
+  .meta { color:var(--muted); font:400 13px/1.5 var(--font); }
+
+  .ic { display:inline-block; vertical-align:-.15em; flex:none; }
+  .btn .ic, button.icon .ic { vertical-align:middle; }
+
+  @keyframes ebPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.25; transform:scale(.65); } }
+  @keyframes ebFade  { from { opacity:0; } to { opacity:1; } }
+  @keyframes ebRise  { from { opacity:0; transform:translateY(6px) scale(.985); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  }
+
+  a { color:var(--accent-hi); text-decoration:none; text-underline-offset:3px; }
+  a:hover { text-decoration:underline; }
+  code { font-family:var(--mono); font-size:.86em; background:var(--panel3);
+         color:var(--muted); padding:1px 5px; border-radius:var(--r-sm); }
+  ::selection { background:var(--accent-soft); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* ---- kop ---- */
+  header { background:var(--panel); border-bottom:1px solid var(--border); padding:18px 30px 0; }
+  .hbar { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:11px; font:600 24px/1.2 var(--font); letter-spacing:-.01em; }
+  .brand .logo { width:34px; height:34px; flex:none; border-radius:var(--r-md);
+                 background:var(--accent-soft); border:1px solid var(--accent-line); color:var(--accent-hi);
+                 display:flex; align-items:center; justify-content:center; }
+  .health { display:flex; align-items:center; gap:14px; row-gap:5px; flex-wrap:wrap; justify-content:flex-end;
+            font:400 12px/1 var(--font); color:var(--muted); padding-top:5px; }
+  .health > span { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+  .health .hl-err { color:var(--danger-tx); }
+  .health .mono { font-family:var(--mono); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:999px; background:var(--faint); flex:none; }
+  .dot.ok { background:var(--ok); box-shadow:0 0 0 3px var(--ok-soft); }
+  .dot.err { background:var(--danger); box-shadow:0 0 0 3px var(--danger-soft); }
+  .dot.warn { background:var(--warn); box-shadow:0 0 0 3px var(--warn-soft); }
+
+  nav { display:flex; gap:4px; margin-top:14px; flex-wrap:wrap; }
+  nav button { background:none; border:0; color:var(--muted); padding:11px 14px; cursor:pointer;
+               font:500 14px/1 var(--font); border-radius:var(--r-md) var(--r-md) 0 0; }
+  nav button:hover { color:var(--text); background:var(--panel3); }
+  nav button.active { color:var(--text); box-shadow:inset 0 -2px 0 var(--accent); background:none; }
+  .tabdot { display:inline-block; width:6px; height:6px; border-radius:999px; background:var(--ok);
+            box-shadow:0 0 0 3px var(--ok-soft); margin-left:5px; vertical-align:middle; }
+
+  main { padding:26px 30px 60px; max-width:1000px; margin:0 auto; }
+  .panel { display:none; } .panel.active { display:block; animation:ebFade .14s ease; }
+
+  /* ---- knoppen (soft-fill) ---- */
+  button.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    min-height:34px; padding:0 14px; border-radius:var(--r-md); cursor:pointer;
+    font:500 13px/1 var(--font); border:1px solid var(--accent-line); background:var(--accent-soft);
+    color:var(--accent-hi); transition:background .12s, border-color .12s, color .12s; }
+  button.btn:hover { background:var(--accent-hover); border-color:var(--accent); color:#d2cefd; }
+  button.btn:active { transform:translateY(1px); }
+  button.btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+  button.btn.secondary { background:var(--panel3); border-color:var(--border); color:var(--text); }
+  button.btn.secondary:hover { background:#31364a; border-color:var(--border-strong); color:#fff; }
+  button.btn.danger { background:var(--danger-soft); border-color:var(--danger-line); color:var(--danger-tx); }
+  button.btn.danger:hover { background:rgba(217,105,95,.26); border-color:var(--danger); color:#f5c4be; }
+  button.btn.small { min-height:28px; padding:0 10px; font-size:12px; gap:5px; }
+  button.btn.secondary.active { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-hi); }
+
+  button.icon { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
+    flex:none; padding:0; background:transparent; border:1px solid var(--border); color:var(--muted);
+    border-radius:var(--r-md); cursor:pointer; transition:background .12s, border-color .12s, color .12s; }
+  button.icon:hover { background:var(--panel3); color:var(--text); border-color:var(--border-strong); }
+  button.icon:active { transform:translateY(1px); }
+  button.icon.on { background:var(--warn-soft); border-color:var(--warn-line); color:var(--warn); }
+  button.icon.danger:hover { background:var(--danger-soft); border-color:var(--danger-line); color:var(--danger-tx); }
+
+  /* ---- velden ---- */
+  input, select, textarea { background:var(--panel2); border:1px solid var(--border);
+    color:var(--text); padding:9px 12px; border-radius:var(--r-sm); font:400 14px/1.4 var(--font);
+    min-height:38px; caret-color:var(--accent); }
+  input::placeholder, textarea::placeholder { color:var(--faint); }
+  input:hover, select:hover, textarea:hover { border-color:var(--border-strong); }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(145,132,217,.18); }
+  input[type=checkbox] { min-height:0; width:17px; height:17px; accent-color:var(--accent); }
+  input[type=number] { min-height:38px; }
+
+  /* ---- kaarten ---- */
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg);
+          padding:16px; margin-bottom:12px; display:flex; gap:16px; align-items:flex-start;
+          transition:background .12s, border-color .12s; }
+  .card:hover { background:#23273a; border-color:var(--border-strong); }
+  .card .cover { width:64px; height:96px; flex:none; border-radius:var(--r-sm); object-fit:cover;
+                 background:var(--cover-grad); border:1px solid var(--border); }
+  .card .body { flex:1; min-width:0; }
+  .card .title { font:600 17px/1.3 var(--font); letter-spacing:-.01em; }
+  .card .title .yr { color:var(--muted); font-weight:400; }
+  .card .meta { color:var(--muted); font:400 13px/1.5 var(--font); margin-top:7px;
+                display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .card .meta .sep { color:var(--border-strong); }
+  .card .actions { display:flex; align-items:center; gap:6px; flex:none; flex-wrap:wrap; justify-content:flex-end; }
+  .card.selected { border-color:var(--accent-line); box-shadow:inset 0 0 0 1px var(--accent-line); }
+  .card .selbox { align-self:center; }
+  .card.compact { padding:14px; align-items:center; }
+  .card.compact .cover { width:44px; height:66px; }
+  .card.compact .meta { margin-top:4px; }
+
+  /* ---- pills / tags / badges ---- */
+  .pill { display:inline-block; vertical-align:middle; font:600 11px/1.3 var(--font);
+          letter-spacing:.04em; text-transform:uppercase; padding:4px 10px; border-radius:999px;
+          background:var(--panel3); border:1px solid var(--border-strong); color:var(--tag-tx); }
+  .pill.searching   { background:var(--info-soft);   border-color:var(--info-line);   color:var(--info-tx); }
+  .pill.downloading { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-hi); }
+  .pill.downloaded  { background:var(--ok-soft);     border-color:var(--ok-line);     color:var(--ok-tx); }
+  .pill.failed      { background:var(--danger-soft); border-color:rgba(217,105,95,.32); color:var(--danger-tx); }
+
+  .langtag { display:inline-block; vertical-align:middle; min-width:24px; text-align:center;
+             background:var(--panel3); border:1px solid var(--border-strong); border-radius:var(--r-sm);
+             padding:2px 6px; font:600 11px/1.3 var(--font); color:var(--tag-tx); }
+
+  .langtoggle { font:500 11px/1.3 var(--font); border:1px solid var(--border); background:var(--panel2);
+                color:var(--muted); border-radius:999px; padding:4px 10px; cursor:pointer; min-height:0; }
+  .langtoggle:hover { color:var(--text); border-color:var(--border-strong); }
+
+  .badge { display:inline-flex; align-items:center; gap:4px; font:600 10px/1.3 var(--font);
+           letter-spacing:.06em; text-transform:uppercase; padding:3px 7px; border-radius:var(--r-sm);
+           background:var(--panel3); border:1px solid var(--border-strong); color:var(--tag-tx); margin-left:6px; }
+  .badge.conv { background:var(--warn-soft); border-color:var(--warn-line); color:var(--warn-tx); }
+  .badge.free { background:var(--ok-soft); border-color:var(--ok-line); color:var(--ok-tx); }
+  .badge.acct { background:var(--info-soft); border-color:var(--info-line); color:var(--info-tx); }
+
+  /* ---- status- en voortgangsregels ---- */
+  .searching-line { margin-top:8px; font:400 13px/1.4 var(--font); color:var(--info-tx);
+                    display:flex; align-items:center; gap:8px; }
+  .pulse { width:7px; height:7px; border-radius:999px; background:var(--info); flex:none;
+           animation:ebPulse 1.4s ease-in-out infinite; }
+  .health .searching-chip { color:var(--info-tx); display:inline-flex; align-items:center; gap:6px; }
+
+  .progress { height:6px; background:var(--panel3); border-radius:999px; margin-top:8px; overflow:hidden; }
+  .progress > div { height:100%; background:var(--accent); border-radius:999px; transition:width .4s ease; }
+
+  .ok-line, .err-line, .warn-line { font:400 13px/1.5 var(--font); margin-top:8px;
+    display:flex; align-items:flex-start; gap:8px; }
+  .ok-line { color:var(--ok-tx); } .err-line { color:var(--danger-tx); } .warn-line { color:var(--warn-tx); }
+  .ok-line .ic, .err-line .ic, .warn-line .ic { margin-top:1px; }
+  .linkbtn { background:none; border:0; color:var(--accent-hi); cursor:pointer; font:inherit;
+             padding:0; text-decoration:underline; text-underline-offset:2px; }
+
+  /* ---- boek toevoegen / autocomplete ---- */
+  .addbar { position:relative; margin-bottom:22px; }
+  .addbar input { width:100%; }
+  .suggest { position:absolute; z-index:10; left:0; right:0; background:var(--panel);
+    border:1px solid var(--border-strong); border-radius:var(--r-md); margin-top:6px;
+    max-height:420px; overflow-y:auto; box-shadow:var(--sh-2); }
+  .suggest .opt { display:flex; gap:12px; padding:10px 14px; cursor:pointer; align-items:center;
+                  border-bottom:1px solid var(--border); }
+  .suggest .opt:last-child { border-bottom:none; }
+  .suggest .opt:hover { background:var(--panel3); }
+  .suggest .opt img { width:30px; height:45px; object-fit:cover; border-radius:var(--r-sm);
+                      background:var(--cover-grad); border:1px solid var(--border); flex:none; }
+
+  .row2 { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  label { display:block; margin:16px 0 6px; font:500 13px/1.4 var(--font); color:var(--muted); }
+  .form-row { width:100%; }
+  .hint { font:400 12px/1.5 var(--font); color:var(--faint); margin-top:4px; }
+
+  /* ---- lijsten ---- */
+  .listbox { background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; }
+  .result-item { padding:14px 16px; border-bottom:1px solid var(--border);
+                 display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .result-item:last-child { border-bottom:none; }
+  .result-item.dim { opacity:.45; }
+
+  .msg { padding:12px 14px; border-radius:var(--r-md); margin-bottom:14px; font:400 13px/1.5 var(--font);
+         display:flex; align-items:flex-start; gap:10px; }
+  .msg .ic { margin-top:1px; }
+  .msg.ok  { background:var(--ok-soft);     border:1px solid var(--ok-line);     color:var(--ok-tx); }
+  .msg.err { background:var(--danger-soft); border:1px solid rgba(217,105,95,.32); color:var(--danger-tx); }
+
+  .empty { color:var(--muted); text-align:center; padding:40px 24px; border:1px dashed var(--border-strong);
+           border-radius:var(--r-lg); display:flex; flex-direction:column; align-items:center; gap:12px;
+           font:500 14px/1.5 var(--font); }
+  .empty .ic { color:var(--faint); }
+  .suggest .empty, .dialog .empty, #link-list .empty { border:0; padding:22px; }
+
+  .toolbar { display:flex; gap:8px; margin-bottom:16px; align-items:center; flex-wrap:wrap; }
+  .toolbar .lbl { font:500 13px/1 var(--font); color:var(--muted); }
+
+  h3 { font:600 12px/1 var(--font); letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+       margin:28px 0 12px; display:flex; align-items:center; gap:8px; }
+  h3 .ic { color:var(--muted); }
+  .dialog h3 { font:600 17px/1.3 var(--font); letter-spacing:-.01em; text-transform:none; color:var(--text); }
+
+  /* filterknoppen = pills met teller */
+  .filter-btn { border-radius:999px; }
+  .filter-btn .fc { color:var(--faint); margin-left:2px; }
+  .filter-btn.active { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-hi); }
+  .filter-btn.active .fc { color:var(--accent); }
+  .book-filter { flex:1; min-width:200px; }
+
+  /* ---- suggesties (Volgen) ---- */
+  .sug-group { background:var(--panel2); border:1px solid var(--border); border-radius:var(--r-lg);
+               overflow:hidden; margin-bottom:14px; }
+  .sug-group-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+                    padding:14px 16px; background:var(--panel); border-bottom:1px solid var(--border); cursor:pointer; }
+  .sug-group-head .gname { font:600 15px/1.3 var(--font); }
+  .sug-group-head .cnt { color:var(--muted); font-weight:400; font-size:13px; }
+  .sug-group-body { padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .sug-group-body .card { margin:0; border-radius:var(--r-md); padding:12px; align-items:center; }
+  .sug-group-body .cover { width:40px; height:60px; }
+  .pager { display:flex; align-items:center; gap:10px; justify-content:center; padding-top:4px;
+           font:400 13px/1 var(--font); color:var(--muted); }
+  .pager button { background:var(--panel3); border:1px solid var(--border); color:var(--text);
+                  border-radius:var(--r-md); padding:6px 10px; cursor:pointer; min-height:0;
+                  font:500 12px/1 var(--font); display:inline-flex; align-items:center; gap:5px; }
+  .pager button:disabled { opacity:.45; cursor:default; }
+
+  /* ---- instellingen: sticky subnav + savebar ---- */
+  .subnav { position:sticky; top:0; z-index:20; display:flex; gap:2px; flex-wrap:wrap; margin-bottom:24px;
+            background:var(--bg); border:1px solid var(--border); border-radius:var(--r-md); padding:6px; }
+  .subnav a { font:500 13px/1 var(--font); color:var(--muted); text-decoration:none;
+              padding:7px 11px; border-radius:var(--r-md); }
+  .subnav a:hover { color:var(--text); background:var(--panel3); }
+  .subnav a.spy { color:var(--accent-hi); background:var(--accent-soft); }
+  #settings h3 { scroll-margin-top:72px; }
+  #settings h3:first-of-type { margin-top:4px; }
+  .savebar { position:sticky; bottom:0; z-index:20; background:var(--panel);
+             border-top:1px solid var(--border-strong); box-shadow:0 -6px 18px rgba(0,0,0,.45);
+             padding:14px 0; margin-top:28px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .savebar .msg { margin:0; }
+
+  /* ---- Activity ---- */
+  .rec-row { display:flex; align-items:center; gap:12px; padding:11px 16px; border-bottom:1px solid var(--border);
+             font:400 13px/1.4 var(--font); }
+  .rec-row:last-child { border-bottom:none; }
+  .rec-row .rec-word { font-weight:500; min-width:96px; }
+  .rec-row .rec-title { color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rec-row .rec-time { margin-left:auto; color:var(--faint); font-size:12px; white-space:nowrap; }
+  .rec-row .rec-detail { color:var(--faint); font-size:12px; }
+
+  /* ---- overlay / dialoog ---- */
+  .overlay { position:fixed; inset:0; background:rgba(8,9,14,.72); display:flex;
+             align-items:center; justify-content:center; z-index:100; padding:16px; animation:ebFade .15s ease; }
+  .dialog { background:var(--panel); border-radius:var(--r-lg); box-shadow:var(--sh-3);
+            padding:24px; max-width:440px; width:100%; animation:ebRise .16s ease;
+            display:flex; flex-direction:column; gap:14px; }
+  .dialog #link-list { margin:0 -24px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+  .dialog #link-list .result-item { padding-left:24px; padding-right:24px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbar">
+    <div class="brand"><span class="logo"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5zM4 17.5A1.5 1.5 0 0 1 5.5 16H19"></path></svg></span>EbookArr</div>
+    <div class="health" id="health"></div>
+  </div>
+  <nav>
+    <button class="tab-btn active" data-tab="wanted">Wanted</button>
+    <button class="tab-btn" data-tab="activity">Activity</button>
+    <button class="tab-btn" data-tab="authors">Volgen <span id="follow-dot" class="tabdot" style="display:none;"></span></button>
+    <button class="tab-btn" data-tab="settings">Instellingen</button>
+  </nav>
+</header>
+
+<main>
+  <div id="wanted" class="panel active">
+    <div class="addbar">
+      <input id="book-search" placeholder="Zoek een boek op titel om toe te voegen…" autocomplete="off">
+      <div id="suggest" class="suggest" style="display:none;"></div>
+    </div>
+    <div class="toolbar">
+      <button class="btn small" onclick="toggleManual()"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg> Handmatig toevoegen</button>
+      <button class="btn secondary small" onclick="searchAll()"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5 14h5l-1 7 8-11h-5z"></path></svg> Alles nu zoeken</button>
+      <button class="btn secondary small" onclick="rescanLibrary()"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v3.5h-3.5"></path></svg> Bibliotheek herscannen</button>
+      <span id="manual" style="display:none;" class="row2">
+        <input id="new-title" placeholder="Titel">
+        <input id="new-author" placeholder="Auteur (optioneel)">
+        <button class="btn small" onclick="addManual()">Toevoegen</button>
+      </span>
+    </div>
+    <div class="toolbar">
+      <span class="lbl">Toon:</span>
+      <button class="btn secondary small filter-btn active" data-filter="all" onclick="setFilter('all')">Alles</button>
+      <button class="btn secondary small filter-btn" data-filter="wanted" onclick="setFilter('wanted')">Gewenst</button>
+      <button class="btn secondary small filter-btn" data-filter="downloading" onclick="setFilter('downloading')">Downloadt</button>
+      <button class="btn secondary small filter-btn" data-filter="downloaded" onclick="setFilter('downloaded')">Binnengehaald</button>
+      <input id="book-filter" class="book-filter" placeholder="Filter op titel of auteur…"
+             oninput="filterBooks()" style="padding:6px 10px;font-size:13px;">
+      <button class="btn secondary small" onclick="toggleSelect()" id="select-toggle">Selecteren</button>
+    </div>
+    <div id="select-bar" class="toolbar" style="display:none;">
+      <label style="margin:0;font-size:13px;"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this.checked)"> Alles</label>
+      <span id="select-count" style="font-size:13px;color:var(--muted);">0 geselecteerd</span>
+      <button class="btn danger small" style="margin-left:auto;" onclick="openDeleteDialog()">Verwijderen</button>
+    </div>
+    <div id="wanted-msg"></div>
+    <div id="books-list"></div>
+  </div>
+
+  <div id="link-overlay" class="overlay" style="display:none;">
+    <div class="dialog" style="max-width:560px;">
+      <h3 style="margin-top:0;">Bestand koppelen</h3>
+      <p id="link-text" style="color:var(--muted);font-size:14px;margin-top:0;"></p>
+      <div id="link-list" style="max-height:52vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn secondary" onclick="document.getElementById('link-overlay').style.display='none'">Sluiten</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-overlay" class="overlay" style="display:none;">
+    <div class="dialog">
+      <h3 style="margin-top:0;">Boeken verwijderen</h3>
+      <p id="delete-text" style="color:var(--muted);font-size:14px;"></p>
+      <label style="display:flex;gap:8px;align-items:center;font-size:14px;">
+        <input type="checkbox" id="delete-files"> Ook de gedownloade epub-bestanden uit de bibliotheek verwijderen
+      </label>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+        <button class="btn secondary" onclick="closeDeleteDialog()">Annuleren</button>
+        <button class="btn danger" onclick="confirmDelete()">Verwijderen</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="activity" class="panel">
+    <h3 style="margin-top:0;"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 13 2.5-7h5"></path></svg>Nu aan het zoeken</h3>
+    <div id="activity-searching"></div>
+    <h3><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M8 11.5l4 4 4-4M4.5 19.5h15"></path></svg>Downloads bezig</h3>
+    <div id="activity-downloads"></div>
+    <h3><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M12 7.5V12l3 2"></path></svg>Recent</h3>
+    <div id="activity-recent"></div>
+  </div>
+
+  <div id="authors" class="panel">
+    <h3 style="margin-top:0;">Auteurs &amp; reeksen volgen</h3>
+    <p style="color:var(--muted);font-size:14px;">
+      EbookArr checkt dagelijks op nieuwe boeken (in je leestalen). Nieuwe vondsten
+      komen als <b>suggestie</b> hieronder te staan — ze worden niet automatisch
+      gedownload. Bij openstaande suggesties zie je een groen bolletje op het tabblad.
+    </p>
+    <div class="row2">
+      <select id="follow-type">
+        <option value="author">Auteur</option>
+        <option value="series">Reeks</option>
+      </select>
+      <input id="follow-name" placeholder="bv. Terry Pratchett  /  Discworld" style="flex:1;">
+      <input id="follow-author" placeholder="Auteur van de reeks (optioneel)" style="flex:1;display:none;">
+      <button class="btn small" onclick="addFollow()">Toevoegen</button>
+      <button class="btn secondary small" onclick="checkFollows()">Nu checken</button>
+    </div>
+    <div id="authors-msg"></div>
+    <div id="follows-list" style="margin-top:14px;"></div>
+
+    <h3>Suggesties</h3>
+    <div class="hint" style="margin-bottom:6px;">
+      <b>Negeren</b> = nooit meer voorstellen. <b>× Verwijderen</b> = nu uit de lijst,
+      maar kan bij een volgende check terugkomen.
+    </div>
+    <label class="hint" style="display:flex;gap:7px;align-items:center;margin-bottom:4px;cursor:pointer;">
+      <input type="checkbox" id="hide-companions" checked onchange="loadSuggestions()">
+      Companions verbergen (dagboeken, atlassen, quiz- en kleurboeken, kalenders…)
+      <span id="companion-note" style="color:var(--muted);"></span>
+    </label>
+    <label class="hint" style="display:flex;gap:7px;align-items:center;margin-bottom:12px;">
+      Sorteren:
+      <select id="sug-sort" onchange="setSugSort(this.value)" style="padding:4px 8px;font-size:13px;">
+        <option value="title">Titel (A–Z)</option>
+        <option value="year">Jaar (oud → nieuw)</option>
+        <option value="year-desc">Jaar (nieuw → oud)</option>
+      </select>
+    </label>
+    <div id="suggestions-list"></div>
+
+    <h3 style="cursor:pointer;" onclick="toggleDismissed()">
+      Genegeerd <span id="dismissed-count" style="color:var(--muted);font-weight:400;"></span>
+      <span id="dismissed-caret"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6 6 6-6 6"></path></svg></span>
+    </h3>
+    <div id="dismissed-list" style="display:none;"></div>
+  </div>
+
+  <div id="add-results" class="panel">
+    <button class="btn secondary" onclick="showTab('wanted')"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"></path></svg> Terug</button>
+    <h3 id="add-results-title" style="margin-top:16px;"></h3>
+    <div id="add-results-msg"></div>
+    <div id="add-results-list"></div>
+  </div>
+
+  <div id="settings" class="panel">
+    <nav class="subnav">
+      <a href="#set-prowlarr">Prowlarr</a>
+      <a href="#set-qbit">qBittorrent</a>
+      <a href="#set-zoeken">Zoeken</a>
+      <a href="#set-bronnen">Downloadbronnen</a>
+      <a href="#set-bib">Bibliotheek</a>
+      <a href="#set-opds">Leesapps</a>
+    </nav>
+
+    <h3 id="set-prowlarr">Prowlarr</h3>
+    <label>Prowlarr URL</label>
+    <input class="form-row" id="prowlarr_url" placeholder="http://localhost:9696">
+    <label>Prowlarr API key</label>
+    <input class="form-row" id="prowlarr_api_key" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen">
+    <div class="hint" id="prowlarr_api_key_hint"></div>
+    <div style="margin-top:10px;"><button class="btn secondary" onclick="testProwlarr()">Verbinding testen</button></div>
+
+    <h3 id="set-qbit">qBittorrent</h3>
+    <label>qBittorrent Web UI URL</label>
+    <input class="form-row" id="qbittorrent_url" placeholder="http://localhost:8080">
+    <label>Gebruikersnaam</label>
+    <input class="form-row" id="qbittorrent_username" autocomplete="off">
+    <label>Wachtwoord</label>
+    <input class="form-row" id="qbittorrent_password" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen">
+    <div class="hint" id="qbittorrent_password_hint"></div>
+    <div style="margin-top:10px;"><button class="btn secondary" onclick="testQbittorrent()">Verbinding testen</button></div>
+
+    <h3 id="set-zoeken">Zoeken &amp; downloaden</h3>
+    <label>Automatisch zoeken — interval (uren)</label>
+    <input class="form-row" id="search_interval_hours" type="number" min="1" value="6">
+    <label><input type="checkbox" id="auto_download"> Beste release automatisch downloaden</label>
+    <label>Minimum aantal seeders</label>
+    <input class="form-row" id="min_seeders" type="number" min="0" value="1">
+    <label>Prowlarr-categorieën (Torznab-ids, komma-gescheiden)</label>
+    <input class="form-row" id="prowlarr_categories" placeholder="7000,7020">
+    <div class="hint">7000 = Books, 7020 = Books/EBook. Leeg = alle categorieën.</div>
+    <label>Na hoeveel uur zonder seeders geldt een download als vastgelopen?</label>
+    <input class="form-row" id="stalled_hours" type="number" min="1" value="24">
+
+    <label><input type="checkbox" id="accept_kindle"> Ook Kindle-formaten (mobi/azw3) accepteren en bij importeren naar epub converteren</label>
+    <div class="hint" id="calibre_hint"></div>
+    <input class="form-row" id="calibre_path" placeholder="pad naar ebook-convert.exe (leeg = automatisch zoeken)" style="margin-top:6px;">
+    <label style="margin-top:12px;"><input type="checkbox" id="embed_metadata"> Titel, auteur, taal en cover ín het epub-bestand schrijven bij importeren (via Calibre)</label>
+    <div class="hint" id="embed_hint"></div>
+
+    <h3 id="set-bronnen">Downloadbronnen</h3>
+    <div class="hint" style="margin-bottom:8px;">Er wordt in deze volgorde gezocht; gestopt bij de eerste bron met een bruikbare epub. Torrents (Prowlarr) zijn altijd de laatste redmiddel.</div>
+    <label style="margin-top:6px;"><input type="checkbox" id="src_gutenberg"> 1. Project Gutenberg <span class="hint">(klassiekers, publiek domein)</span></label>
+    <label style="margin-top:6px;"><input type="checkbox" id="src_standardebooks"> 2. Standard Ebooks <span class="hint">(mooi opgemaakte publiek-domein epubs)</span></label>
+    <label style="margin-top:6px;"><input type="checkbox" id="src_libgen"> 3. Library Genesis <span class="hint">(vaak geblokkeerd door de provider — werkt meestal alleen met VPN)</span></label>
+    <input class="form-row" id="libgen_mirror" placeholder="mirror vastzetten, bv. libgen.is (leeg = automatisch)" style="margin-top:4px;">
+    <label style="margin-top:10px;"><input type="checkbox" id="src_zlibrary"> 4. Z-Library <span class="hint">(gratis account, ~10 downloads/dag)</span></label>
+    <div class="row2" style="margin-top:4px;">
+      <input id="zlib_email" placeholder="Z-Library e-mail" style="flex:1;" autocomplete="off">
+      <input id="zlib_password" type="password" placeholder="Z-Library wachtwoord" style="flex:1;" autocomplete="new-password">
+    </div>
+    <input class="form-row" id="zlib_domain" placeholder="Z-Library domein vastzetten (leeg = automatisch)" style="margin-top:4px;">
+    <div class="hint" id="zlib_hint" style="margin-top:4px;"></div>
+    <label style="margin-top:10px;">Anna's Archive member-key <span class="hint">(optioneel; leeg = uit)</span></label>
+    <input class="form-row" id="annas_key" type="password" autocomplete="new-password" placeholder="alleen nodig met betaald lidmaatschap">
+
+    <h3 id="set-bib">Bibliotheek &amp; metadata</h3>
+    <label>Bibliotheekmap (epub wordt hierheen gekopieerd)</label>
+    <input class="form-row" id="library_folder" placeholder="D:\Boeken\Ebooks">
+    <label>Talen die je leest</label>
+    <div class="row2">
+      <label style="margin:0;"><input type="checkbox" id="lang_en" value="en"> Engels</label>
+      <label style="margin:0;"><input type="checkbox" id="lang_nl" value="nl"> Nederlands</label>
+    </div>
+    <div class="hint">Boeken en releases in andere talen worden weggefilterd bij het zoeken.</div>
+
+    <h3 id="set-opds">Leesapps (OPDS)</h3>
+    <div class="hint" style="margin-bottom:8px;">Voeg deze link toe in een leesapp (KOReader, Thorium, Moon+ Reader, Librera, Marvin…) om je bibliotheek te bladeren en boeken te downloaden over je wifi.</div>
+    <div class="row2" style="align-items:stretch;">
+      <input class="form-row" id="opds_url" readonly style="flex:1;font-family:monospace;" onclick="this.select()">
+      <button class="btn secondary small" type="button" onclick="copyOpds()">Kopieer</button>
+    </div>
+    <label style="margin-top:12px;"><input type="checkbox" id="opds_auth" onchange="opdsAuthToggle()"> Beveiligen met een wachtwoord</label>
+    <div class="row2" id="opds_creds" style="display:none;margin-top:4px;">
+      <input id="opds_user" placeholder="gebruikersnaam" autocomplete="off" style="flex:1;">
+      <input id="opds_password" type="password" placeholder="wachtwoord" autocomplete="new-password" style="flex:1;">
+    </div>
+    <div class="hint" id="opds_hint"></div>
+
+    <div class="savebar">
+      <button class="btn" onclick="saveSettings()">Instellingen opslaan</button>
+      <div id="settings-msg"></div>
+    </div>
+  </div>
+
+  <div id="search-panel" class="panel">
+    <button class="btn secondary" onclick="showTab('wanted')"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"></path></svg> Terug</button>
+    <div id="search-head" class="card" style="align-items:center;margin:16px 0 10px;"></div>
+    <label><input type="checkbox" id="show-all-formats" onchange="rerunSearch()"> Toon ook niet-epub releases</label>
+    <div id="search-results"></div>
+  </div>
+</main>
+
+<script>
+let currentBookId = null;
+let currentBookTitle = "";
+let suggestTimer = null;
+let booksById = {};
+
+// ---- Iconen: losse inline <svg>, 24-grid, stroke 1.5, round (uit het herontwerp) ----
+const ICONS = {
+  book:'M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5zM4 17.5A1.5 1.5 0 0 1 5.5 16H19',
+  search:'M17.5 10.5a7 7 0 1 1-14 0 7 7 0 0 1 14 0M15.5 15.5 20 20',
+  plus:'M12 5v14M5 12h14',
+  bolt:'M13 3 5 14h5l-1 7 8-11h-5z',
+  rescan:'M20 12a8 8 0 1 1-2.34-5.66M20 4v3.5h-3.5',
+  star:'m12 4 2.4 4.9 5.6.8-4 3.85.95 5.45L12 16.4l-4.95 2.6L8 13.55 4 9.7l5.6-.8z',
+  list:'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  link:'M10.5 13.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1 1M13.5 10.5a3.5 3.5 0 0 0-5 0L6 13a3.5 3.5 0 0 0 5 5l1-1',
+  x:'M6 6l12 12M18 6 6 18',
+  folder:'M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5A1.5 1.5 0 0 1 17.5 19h-13A1.5 1.5 0 0 1 3 17.5z',
+  download:'M12 4v11M8 11.5l4 4 4-4M4.5 19.5h15',
+  check:'m5 12.5 4.5 4.5L19 7',
+  warn:'M12 4.5 21 19.5H3zM12 10v4.5M12 17h.01',
+  error:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M9 9l6 6M15 9l-6 6',
+  clock:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M12 7.5V12l3 2',
+  person:'M16.5 8.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0M4 20a8 8 0 0 1 16 0',
+  stack:'M12 3 3 7.5 12 12l9-4.5zM3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5',
+  chevL:'m14 6-6 6 6 6',
+  chevR:'m10 6 6 6-6 6',
+  chevD:'m6 10 6 6 6-6',
+  activity:'M3 12h4l2.5-6 4 13 2.5-7h5',
+  file:'M13.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8.5zM13.5 3.5v5h5',
+  arrow:'M5 12h13M13 7l5 5-5 5',
+};
+function icon(name, size, filled) {
+  size = size || 16;
+  const st = filled
+    ? ' fill="currentColor" stroke="none"'
+    : ' fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
+  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24"${st} aria-hidden="true"><path d="${ICONS[name] || ''}"></path></svg>`;
+}
+
+// Placeholder-cover (boek-icoon in de panel-kleur) voor als er geen cover is
+const NO_COVER = "data:image/svg+xml," + encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 96'>
+     <rect width='64' height='96' fill='#242838'/>
+     <g transform='translate(20 34)' fill='none' stroke='#4d5163' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'>
+       <path d='M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5z'/><path d='M4 17.5A1.5 1.5 0 0 1 5.5 16H19'/></g>
+   </svg>`);
+function coverErr(img) { if (img.src !== NO_COVER) img.src = NO_COVER; }
+// Laat de server de beste werkende cover kiezen (met cache) i.p.v. één vaste URL
+function coverSrc(o) {
+  const p = new URLSearchParams();
+  if (o.isbn) p.set('isbn', o.isbn);
+  if (o.title) p.set('title', o.title);
+  if (o.author) p.set('author', o.author);
+  if (o.cover_url) p.set('u', o.cover_url);
+  return '/api/cover?' + p.toString();
+}
+
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+  if (btn) btn.classList.add('active');
+}
+let activityTimer = null;
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
+  showTab(b.dataset.tab);
+  if (b.dataset.tab === 'settings') loadSettings();
+  if (b.dataset.tab === 'authors') loadAuthors();
+  clearInterval(activityTimer);
+  if (b.dataset.tab === 'activity') {
+    loadActivity();
+    activityTimer = setInterval(loadActivity, 3000);
+  }
+}));
+
+function escapeHtml(str) {
+  const d = document.createElement('div'); d.textContent = str == null ? '' : str; return d.innerHTML;
+}
+function langLabel(l) { return { nl:'NL', en:'EN' }[l] || (l ? l.toUpperCase() : ''); }
+function langTag(l) { const t = langLabel(l); return t ? `<span class="langtag">${t}</span>` : ''; }
+function statusLabel(s) {
+  return { wanted:'Gewenst', searching:'Zoeken', downloading:'Downloadt', downloaded:'Binnengehaald', failed:'Mislukt' }[s] || s;
+}
+function formatSize(bytes) {
+  if (!bytes) return '?';
+  const nl = n => n.toLocaleString('nl-BE', { maximumFractionDigits: n >= 10 ? 0 : 1 });
+  const kb = bytes / 1024;
+  if (kb < 1024) return nl(kb) + ' KB';
+  const mb = kb / 1024;
+  if (mb < 1024) return nl(mb) + ' MB';
+  return nl(mb / 1024) + ' GB';
+}
+function formatSpeed(bps) {
+  if (!bps) return '0 KB/s';
+  if (bps >= 1024 * 1024) return (bps / (1024 * 1024)).toFixed(1) + ' MB/s';
+  return Math.round(bps / 1024) + ' KB/s';
+}
+function formatEta(sec) {
+  if (sec == null) return '—';
+  if (sec < 60) return sec + 's';
+  if (sec < 3600) return Math.round(sec / 60) + 'm';
+  return Math.round(sec / 3600) + 'u';
+}
+function timeAgo(iso) {
+  if (!iso) return '';
+  let s2 = iso.replace(' ', 'T');
+  if (!/[Z+]/.test(s2)) s2 += 'Z';
+  const d = new Date(s2);
+  if (isNaN(d)) return '';
+  const s = Math.round((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return 'net';
+  if (s < 3600) return Math.round(s / 60) + ' min geleden';
+  if (s < 86400) return Math.round(s / 3600) + ' uur geleden';
+  return Math.round(s / 86400) + ' dagen geleden';
+}
+
+/* ---------- Activity ---------- */
+function searchPhaseText(info) {
+  const auto = info.trigger === 'automatisch' ? ' · automatisch' : '';
+  return `${info.phase}${auto}`;
+}
+
+async function loadActivity() {
+  let a;
+  try { a = await (await fetch('/api/activity')).json(); }
+  catch (e) { return; }
+  applySearching(a.searching || []);
+  const sr = document.getElementById('activity-searching');
+  if (sr) {
+    const items = a.searching || [];
+    sr.innerHTML = items.length ? items.map(x => `
+      <div class="card" style="display:block;">
+        <div class="title">${escapeHtml(x.title)}</div>
+        <div class="searching-line"><span class="pulse"></span>${escapeHtml(searchPhaseText(x))}…</div>
+      </div>`).join('') : `<div class="empty">${icon('activity',24)}<span>Er wordt nu nergens actief naar gezocht.</span></div>`;
+  }
+  const dl = document.getElementById('activity-downloads');
+  if (!a.downloads.length) {
+    dl.innerHTML = `<div class="empty">${icon('download',24)}<span>Geen downloads bezig.</span></div>`;
+  } else {
+    dl.innerHTML = a.downloads.map(d => {
+      const pct = Math.round((d.progress || 0) * 100);
+      const failed = d.status === 'failed';
+      return `
+      <div class="card" style="display:block;">
+        <div class="title">${escapeHtml(d.title)}${d.author ? ' <span style="color:var(--muted);font-weight:400;">— ' + escapeHtml(d.author) + '</span>' : ''}</div>
+        <div class="meta">${escapeHtml(d.release || '')}</div>
+        ${failed ? `<div class="err-line">${icon('error',15)}<span>${escapeHtml(d.last_error || 'mislukt')}</span></div>` : `
+          <div class="progress"><div style="width:${pct}%;"></div></div>
+          <div class="meta">
+            ${pct}% · ${escapeHtml(d.state || '')} ·
+            ↓ ${formatSpeed(d.dlspeed)} ·
+            ETA ${formatEta(d.eta)} ·
+            ${d.num_seeds ?? 0} seeds ·
+            ${formatSize(d.size)}
+          </div>`}
+      </div>`;
+    }).join('');
+  }
+  const REC = {
+    grabbed: { ic:'download', word:'Gepakt', c:'var(--accent-hi)' },
+    import:  { ic:'check',    word:'Geïmporteerd', c:'var(--ok-tx)' },
+    failed:  { ic:'error',    word:'Mislukt', c:'var(--danger-tx)' },
+  };
+  const rec = document.getElementById('activity-recent');
+  rec.innerHTML = a.recent.length ? `<div class="listbox">${a.recent.map(r => {
+    const e = REC[r.event] || { ic:'clock', word:r.event, c:'var(--muted)' };
+    return `<div class="rec-row">
+      <span style="color:${e.c};display:flex;">${icon(e.ic, 15)}</span>
+      <span class="rec-word" style="color:${e.c};">${escapeHtml(e.word)}</span>
+      <span class="rec-title">${escapeHtml(r.book_title || r.release_title || '?')}</span>
+      ${r.detail ? `<span class="rec-detail">${escapeHtml(r.detail)}</span>` : ''}
+      <span class="rec-time">${timeAgo(r.created_at)}</span>
+    </div>`;
+  }).join('')}</div>` : '<div class="empty">Nog niets gebeurd.</div>';
+}
+
+/* ---------- Zoek-voortgang ---------- */
+let searchingById = {};
+let fastPoll = false;
+function applySearching(list) {
+  const next = {};
+  (list || []).forEach(x => { next[x.book_id] = x; });
+  const changedCount = Object.keys(next).length !== Object.keys(searchingById).length;
+  searchingById = next;
+  const active = Object.keys(next).length > 0;
+  if (active !== fastPoll) { fastPoll = active; syncPollRate(); }
+  if (changedCount) loadBooks();
+}
+let booksTimer = null, statusTimer = null;
+function syncPollRate() {
+  clearInterval(booksTimer); clearInterval(statusTimer);
+  booksTimer = setInterval(loadBooks, fastPoll ? 2000 : 8000);
+  statusTimer = setInterval(loadStatus, fastPoll ? 2000 : 30000);
+}
+
+/* ---------- Health ---------- */
+async function loadStatus() {
+  try {
+    const s = await (await fetch('/api/status')).json();
+    applySearching(s.searching || []);
+    const cls = v => v === 'ok' ? 'ok'
+      : (v === 'unconfigured' || v === 'unknown') ? 'warn' : 'err';
+    const txt = v => v === 'ok' ? 'verbonden'
+      : v === 'unconfigured' ? 'niet ingesteld'
+      : v === 'unknown' ? 'nog niet gecontroleerd'
+      : (v || '').startsWith('error:') ? 'fout' : 'fout';
+    let last = s.last_search_run ? new Date(s.last_search_run).toLocaleString('nl-BE') : 'nog niet';
+    const searching = s.searching || [];
+    let searchChip = '';
+    if (searching.length === 1) {
+      searchChip = `<span class="searching-chip"><span class="pulse" style="display:inline-block;margin-right:5px;"></span>${escapeHtml(searching[0].title)} — ${escapeHtml(searchPhaseText(searching[0]))}…</span>`;
+    } else if (searching.length > 1) {
+      searchChip = `<span class="searching-chip"><span class="pulse" style="display:inline-block;margin-right:5px;"></span>zoekt naar ${searching.length} boeken…</span>`;
+    }
+    const q = s.zlib_quota;
+    const zl = s.zlibrary || 'unconfigured';
+    const zlDetail = zl.startsWith('error:') ? zl.slice(6).trim() : '';
+    let zlExtra = '';   // korte quota-waarschuwing achter het bolletje
+    if (zl === 'ok' && q && q.limit && q.left === 0)
+      zlExtra = ` <span style="color:var(--warn);">— limiet bereikt${q.resets_in ? `, reset over ${escapeHtml(q.resets_in)}` : ''}</span>`;
+    else if (zl === 'ok' && q && q.limit && q.left <= 2)
+      zlExtra = ` <span style="color:var(--muted);">— nog ${q.left} vandaag</span>`;
+    const zlDot = (zl === 'unconfigured') ? '' :
+      `<span class="${cls(zl) === 'err' ? 'hl-err' : ''}" title="${escapeHtml(zlDetail || 'Z-Library')}"><span class="dot ${cls(zl)}"></span>Z-Library ${txt(zl)}${zlExtra}</span>`;
+    const hspan = (v, label) => `<span class="${cls(v) === 'err' ? 'hl-err' : ''}"><span class="dot ${cls(v)}"></span>${label} ${txt(v)}</span>`;
+    document.getElementById('health').innerHTML =
+      hspan(s.prowlarr, 'Prowlarr') +
+      hspan(s.qbittorrent, 'qBittorrent') +
+      (zlDot ? ` ${zlDot}` : '') +
+      `<span>${icon('clock', 13)} laatst gezocht: ${escapeHtml(last)}</span>` +
+      (searchChip ? ` ${searchChip}` : '') +
+      `<span class="mono" title="softwareversie">v${escapeHtml(s.version || '?')}</span>`;
+    const dot = document.getElementById('follow-dot');
+    if (dot) dot.style.display = (s.suggestions_pending > 0) ? 'inline-block' : 'none';
+  } catch (e) { /* stil */ }
+}
+
+/* ---------- Boek toevoegen via metadata-zoeken ---------- */
+const searchInput = document.getElementById('book-search');
+searchInput.addEventListener('input', e => {
+  clearTimeout(suggestTimer);
+  const q = e.target.value.trim();
+  if (q.length < 3) { hideSuggest(); return; }
+  suggestTimer = setTimeout(() => fetchSuggest(q), 350);
+});
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const q = searchInput.value.trim();
+    if (q.length >= 2) { hideSuggest(); openAddResults(q); }
+  }
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.addbar')) hideSuggest();
+});
+function hideSuggest() { document.getElementById('suggest').style.display = 'none'; }
+
+function metaRowHtml(it, handler) {
+  const isOpt = handler === 'opt';
+  const cover = isOpt ? '30px;height:45px' : '48px;height:72px';
+  const j = JSON.stringify(it).replace(/'/g, "&#39;");
+  return `
+    <div class="${isOpt ? 'opt' : 'result-item'}" ${isOpt ? `onclick='addBook(${j}, this)'` : ''}>
+      <img src="${escapeHtml(coverSrc(it))}" onerror="coverErr(this)" loading="lazy" alt=""
+        style="width:${cover};object-fit:cover;border-radius:4px;background:var(--cover-grad);border:1px solid var(--border);flex:none;">
+      <div style="flex:1;min-width:0;">
+        <div>${escapeHtml(it.title)} ${it.year ? `<span style="color:var(--muted)">(${it.year})</span>` : ''}</div>
+        <div style="display:block;color:var(--muted);font-size:12px;margin-top:3px;">
+          ${escapeHtml(it.author || 'onbekende auteur')} ${it.language ? '· ' + langTag(it.language) : ''}
+          ${it.isbn ? '· ' + escapeHtml(it.isbn) : ''}
+        </div>
+        ${!isOpt && it.description ? `<div style="display:block;color:var(--muted);font-size:12px;margin-top:4px;">${escapeHtml(it.description.slice(0, 220))}${it.description.length > 220 ? '…' : ''}</div>` : ''}
+      </div>
+      ${!isOpt ? `<button class="btn small" onclick='addBook(${j}, this)'>Toevoegen</button>` : ''}
+    </div>`;
+}
+
+async function fetchSuggest(q) {
+  const box = document.getElementById('suggest');
+  box.innerHTML = '<div class="opt">Zoeken…</div>';
+  box.style.display = 'block';
+  try {
+    const res = await fetch('/api/metadata/search?q=' + encodeURIComponent(q));
+    const items = await res.json();
+    if (!res.ok) throw new Error(items.detail || 'fout');
+    if (!items.length) { box.innerHTML = '<div class="opt">Niets gevonden — druk Enter voor meer, of "Handmatig toevoegen".</div>'; return; }
+    box.innerHTML = items.slice(0, 8).map(it => metaRowHtml(it, 'opt')).join('') +
+      `<div class="opt" style="justify-content:center;color:var(--accent);" onclick='openAddResults(${JSON.stringify(q).replace(/'/g, "&#39;")})'>↵ Alle resultaten tonen</div>`;
+  } catch (e) {
+    box.innerHTML = `<div class="opt">Fout: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function openAddResults(q) {
+  showTab('add-results');
+  document.getElementById('add-results-title').textContent = `Resultaten voor: ${q}`;
+  document.getElementById('add-results-msg').innerHTML = '';
+  const list = document.getElementById('add-results-list');
+  list.innerHTML = '<div class="empty">Zoeken… (bij een auteursnaam kan dit even duren — de hele bibliografie wordt opgehaald)</div>';
+  try {
+    const res = await fetch('/api/metadata/search?deep=1&limit=80&q=' + encodeURIComponent(q));
+    const items = await res.json();
+    if (!res.ok) throw new Error(items.detail || 'fout');
+    if (!items.length) { list.innerHTML = '<div class="empty">Niets gevonden.</div>'; return; }
+    document.getElementById('add-results-title').textContent = `Resultaten voor: ${q} (${items.length})`;
+    list.innerHTML = `<div class="listbox">${items.map(it => metaRowHtml(it, 'row')).join('')}</div>`;
+  } catch (e) {
+    list.innerHTML = `<div class="msg err">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function addBook(data, btn) {
+  hideSuggest();
+  const payload = {
+    title: data.title, author: data.author || '', language: data.language || null,
+    isbn: data.isbn || null, cover_url: data.cover_url || null,
+    description: data.description || null, year: data.year || null, source_id: data.source_id || null
+  };
+  const res = await fetch('/api/books', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const d = await res.json();
+  const target = document.getElementById(
+    document.getElementById('add-results').classList.contains('active') ? 'add-results-msg' : 'wanted-msg');
+  if (res.status === 409) {
+    target.innerHTML = `<div class="msg err">${escapeHtml(d.detail)}</div>`;
+    return;
+  }
+  if (!res.ok) { target.innerHTML = `<div class="msg err">${escapeHtml(d.detail || 'toevoegen mislukt')}</div>`; return; }
+  searchInput.value = '';
+  if (btn && btn.tagName === 'BUTTON') { btn.innerHTML = icon('check', 13) + ' Toegevoegd'; btn.disabled = true; }
+  target.innerHTML = `<div class="msg ok">"${escapeHtml(data.title)}" toegevoegd${d.note ? ' — ' + escapeHtml(d.note) : ''}.</div>`;
+  loadBooks();
+}
+
+function toggleManual() {
+  const m = document.getElementById('manual');
+  m.style.display = m.style.display === 'none' ? 'inline-flex' : 'none';
+}
+function addManual() {
+  const title = document.getElementById('new-title').value.trim();
+  const author = document.getElementById('new-author').value.trim();
+  if (!title) return;
+  addBook({ title, author });
+  document.getElementById('new-title').value = '';
+  document.getElementById('new-author').value = '';
+}
+
+async function rescanLibrary() {
+  wantedMsg('ok', 'Bibliotheek herscannen…');
+  const d = await (await fetch('/api/library/rescan', { method:'POST' })).json();
+  const parts = [];
+  if (d.added?.length) parts.push(`${d.added.length} nieuw gevonden en toegevoegd: ${d.added.join(', ')}`);
+  if (d.relinked?.length) parts.push(`${d.relinked.length} gekoppeld aan een bestaand boek`);
+  if (d.updated?.length) parts.push(`${d.updated.length} op "Binnengehaald" gezet`);
+  if (d.lost?.length) parts.push(`${d.lost.length} weer op "Gewenst" (bestand weg): ${d.lost.join(', ')}`);
+  wantedMsg(d.lost?.length ? 'err' : 'ok',
+    parts.length ? parts.join(' · ') : 'Bibliotheek is in orde — niks aangepast.');
+  loadBooks();
+}
+
+/* ---------- Volgen (auteurs + reeksen) ---------- */
+document.getElementById('follow-type').addEventListener('change', e => {
+  document.getElementById('follow-author').style.display = e.target.value === 'series' ? '' : 'none';
+});
+
+function loadAuthors() { loadFollows(); loadSuggestions(); }
+
+async function loadFollows() {
+  const list = document.getElementById('follows-list');
+  const follows = await (await fetch('/api/follows')).json();
+  if (!follows.length) { list.innerHTML = `<div class="empty">${icon('person',24)}<span>Je volgt nog niemand. Voeg hierboven een auteur of reeks toe.</span></div>`; return; }
+  list.innerHTML = follows.map(f => `
+    <div class="card" style="align-items:center;">
+      <span class="logo" style="width:36px;height:36px;flex:none;border-radius:8px;background:var(--panel2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">${icon(f.type === 'series' ? 'stack' : 'person', 17)}</span>
+      <div class="body">
+        <div class="title" style="font-size:15px;">${escapeHtml(f.name)}
+          ${f.author ? `<span class="yr">(${escapeHtml(f.author)})</span>` : ''}</div>
+        <div class="meta" style="margin-top:3px;">
+          ${f.last_checked ? 'laatst gecheckt: ' + timeAgo(f.last_checked) : 'nog niet gecheckt'}
+          ${f.last_result ? ' · ' + escapeHtml(f.last_result) : ''}
+        </div>
+      </div>
+      <button class="icon danger" onclick="deleteFollow(${f.id})" title="Niet meer volgen">${icon('x',16)}</button>
+    </div>`).join('');
+}
+async function addFollow() {
+  const type = document.getElementById('follow-type').value;
+  const name = document.getElementById('follow-name').value.trim();
+  const author = document.getElementById('follow-author').value.trim();
+  if (!name) return;
+  await fetch('/api/follows', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ type, name, author })
+  });
+  document.getElementById('follow-name').value = '';
+  document.getElementById('follow-author').value = '';
+  document.getElementById('authors-msg').innerHTML =
+    `<div class="msg ok">"${escapeHtml(name)}" toegevoegd. Klik "Nu checken" of wacht op de dagelijkse controle.</div>`;
+  loadFollows();
+}
+async function deleteFollow(id) {
+  await fetch(`/api/follows/${id}`, { method:'DELETE' });
+  loadFollows();
+}
+async function checkFollows() {
+  document.getElementById('authors-msg').innerHTML = '<div class="msg ok">Bezig met checken…</div>';
+  const d = await (await fetch('/api/follows/check', { method:'POST' })).json();
+  document.getElementById('authors-msg').innerHTML =
+    `<div class="msg ok">${d.checked} gecheckt, ${d.suggested} nieuwe suggestie(s).</div>`;
+  loadFollows(); loadSuggestions(); loadStatus();
+}
+
+/* --- suggesties: gegroepeerd per follow, 20 per pagina --- */
+const PER_PAGE = 20;
+let sugData = [], dismData = [];
+let sugPage = {}, dismPage = {};        // paginanr per groepsnaam
+let sugCollapsed = {}, dismCollapsed = {};
+let sugSort = (() => { try { return localStorage.getItem('sugSort') || 'title'; } catch (e) { return 'title'; } })();
+
+function sortSuggestions(list) {
+  const byTitle = (a, b) => (a.title || '').localeCompare(b.title || '', 'nl', { sensitivity: 'base' });
+  const arr = list.slice();
+  if (sugSort === 'year')
+    arr.sort((a, b) => (a.year || 9999) - (b.year || 9999) || byTitle(a, b));
+  else if (sugSort === 'year-desc')
+    arr.sort((a, b) => (b.year || 0) - (a.year || 0) || byTitle(a, b));
+  else
+    arr.sort(byTitle);
+  return arr;
+}
+function setSugSort(v) {
+  sugSort = v;
+  try { localStorage.setItem('sugSort', v); } catch (e) {}
+  renderGroups('suggestions-list', sugData, false);
+  if (dismissedOpen) renderGroups('dismissed-list', dismData, true);
+}
+
+function suggestionCard(s, dismissed) {
+  return `
+    <div class="card" data-sug="${s.id}">
+      <img class="cover" src="${escapeHtml(coverSrc(s))}" onerror="coverErr(this)" loading="lazy">
+      <div class="body">
+        <div class="title">${escapeHtml(s.title)}${s.year ? ` <span style="color:var(--muted);font-weight:400;">(${s.year})</span>` : ''}</div>
+        <div class="meta">${escapeHtml(s.author || '')} ${s.language ? '· ' + langTag(s.language) : ''}</div>
+      </div>
+      <div class="actions">
+        <button class="btn small" onclick="sugAction(${s.id},'accept')">Toevoegen</button>
+        ${dismissed
+          ? `<button class="btn secondary small" onclick="sugAction(${s.id},'restore')">Terugzetten</button>`
+          : `<button class="btn secondary small" onclick="sugAction(${s.id},'dismiss')" title="Nooit meer voorstellen">Negeren</button>`}
+        <button class="icon danger" onclick="sugAction(${s.id},'delete')" title="Uit de lijst halen (kan bij een volgende check terugkomen)">${icon('x',16)}</button>
+      </div>
+    </div>`;
+}
+
+const COMPANION_RE = /\b(diary|dagboek|journal|calendar|kalender|almanac|almanak|annual|yearbook|jaarboek|postcard|sticker|colou?ring book|kleurboek|\bquiz\b|\bmapp?\b|\batlas\b|companion|pop-?up|papercraft|the art of|the making of|guide to the|encyclop[ae]dia|fools.? guild|unseen university|pocket book|activity book)\b/i;
+function isCompanion(s) { return COMPANION_RE.test(s.title || ''); }
+
+function groupBy(items) {
+  const g = {};
+  items.forEach(s => { (g[s.found_via || 'overig'] ||= []).push(s); });
+  return g;
+}
+
+function renderGroups(containerId, items, dismissed) {
+  const container = document.getElementById(containerId);
+  const groups = groupBy(items);
+  const keys = Object.keys(groups).sort();
+  if (!keys.length) {
+    container.innerHTML = `<div class="empty">${dismissed ? 'Niets genegeerd.' : 'Geen openstaande suggesties.'}</div>`;
+    return;
+  }
+  const pageState = dismissed ? dismPage : sugPage;
+  const collapsed = dismissed ? dismCollapsed : sugCollapsed;
+  container.innerHTML = keys.map(k => {
+    const list = sortSuggestions(groups[k]);
+    const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+    let pg = Math.min(pageState[k] || 0, pages - 1);
+    const isCol = !!collapsed[k];
+    const kEsc = k.replace(/'/g, "\\'");
+    const slice = list.slice(pg * PER_PAGE, pg * PER_PAGE + PER_PAGE);
+    return `
+    <div class="sug-group">
+      <div class="sug-group-head" onclick="toggleGroup('${dismissed ? 'd' : 's'}','${kEsc}')">
+        ${icon(isCol ? 'chevR' : 'chevD', 16)}
+        <span class="gname">${escapeHtml(k)}</span>
+        <span class="cnt">${list.length} boek${list.length === 1 ? '' : 'en'}</span>
+        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation();">
+          <button class="btn small" onclick="groupAction('${kEsc}',${dismissed},'accept')">Alles toevoegen</button>
+          <button class="btn secondary small" onclick="groupAction('${kEsc}',${dismissed},'${dismissed ? 'restore' : 'dismiss'}')">${dismissed ? 'Alles terugzetten' : 'Alles negeren'}</button>
+          <button class="btn danger small" onclick="groupAction('${kEsc}',${dismissed},'delete')">Alles verwijderen</button>
+        </span>
+      </div>
+      ${isCol ? '' : `<div class="sug-group-body">${slice.map(s => suggestionCard(s, dismissed)).join('')}${pages > 1 ? `
+        <div class="pager">
+          <button ${pg === 0 ? 'disabled' : ''} onclick="pageGroup('${dismissed ? 'd' : 's'}','${kEsc}',-1)">${icon('chevL',13)} Vorige</button>
+          <span>pagina ${pg + 1} / ${pages}</span>
+          <button ${pg >= pages - 1 ? 'disabled' : ''} onclick="pageGroup('${dismissed ? 'd' : 's'}','${kEsc}',1)">Volgende ${icon('chevR',13)}</button>
+        </div>` : ''}</div>`}
+    </div>`;
+  }).join('');
+}
+
+function toggleGroup(which, key) {
+  const c = which === 'd' ? dismCollapsed : sugCollapsed;
+  c[key] = !c[key];
+  which === 'd' ? renderGroups('dismissed-list', dismData, true) : renderGroups('suggestions-list', sugData, false);
+}
+function pageGroup(which, key, delta) {
+  const p = which === 'd' ? dismPage : sugPage;
+  p[key] = Math.max(0, (p[key] || 0) + delta);
+  which === 'd' ? renderGroups('dismissed-list', dismData, true) : renderGroups('suggestions-list', sugData, false);
+}
+
+async function loadSuggestions() {
+  const sel = document.getElementById('sug-sort');
+  if (sel) sel.value = sugSort;
+  const raw = await (await fetch('/api/suggestions')).json();
+  const hide = document.getElementById('hide-companions')?.checked;
+  sugData = hide ? raw.filter(s => !isCompanion(s)) : raw;
+  const hidden = raw.length - sugData.length;
+  renderGroups('suggestions-list', sugData, false);
+  const note = document.getElementById('companion-note');
+  if (note) note.textContent = (hide && hidden) ? `${hidden} companion(s) verborgen` : '';
+  loadDismissedCount();
+}
+async function loadDismissedCount() {
+  const d = await (await fetch('/api/suggestions?state=dismissed')).json();
+  document.getElementById('dismissed-count').textContent = `(${d.length})`;
+}
+let dismissedOpen = false;
+async function refreshDismissed() {
+  loadDismissedCount();
+  if (!dismissedOpen) return;
+  dismData = await (await fetch('/api/suggestions?state=dismissed')).json();
+  renderGroups('dismissed-list', dismData, true);
+}
+function toggleDismissed() {
+  dismissedOpen = !dismissedOpen;
+  document.getElementById('dismissed-caret').innerHTML = icon(dismissedOpen ? 'chevD' : 'chevR', 15);
+  document.getElementById('dismissed-list').style.display = dismissedOpen ? 'block' : 'none';
+  refreshDismissed();
+}
+async function sugAction(id, action) {
+  await fetch(`/api/suggestions/${id}/${action}`, { method:'POST' });
+  loadSuggestions(); loadStatus(); refreshDismissed();
+  if (action === 'accept') loadBooks();
+}
+async function groupAction(key, dismissed, action) {
+  const src = dismissed ? dismData : sugData;
+  const ids = src.filter(s => (s.found_via || 'overig') === key).map(s => s.id);
+  if (!ids.length) return;
+  const past = { accept:'toegevoegd', dismiss:'genegeerd', restore:'teruggezet', delete:'verwijderd' }[action];
+  if (ids.length > 3 && !confirm(`${ids.length} boeken ${past}?`)) return;
+  const d = await (await fetch('/api/suggestions/bulk', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ ids, action })
+  })).json();
+  document.getElementById('authors-msg').innerHTML = `<div class="msg ok">${d.count} ${past}.</div>`;
+  loadSuggestions(); loadStatus(); refreshDismissed();
+  if (action === 'accept') loadBooks();
+}
+
+function wantedMsg(type, text) {
+  document.getElementById('wanted-msg').innerHTML = `<div class="msg ${type}">${icon(type === 'ok' ? 'check' : 'error', 16)}<span>${escapeHtml(text)}</span></div>`;
+  setTimeout(() => { document.getElementById('wanted-msg').innerHTML = ''; }, 6000);
+}
+
+/* ---------- Boekenlijst ---------- */
+let currentFilter = 'all';
+let selectMode = false;
+let selectedIds = new Set();
+let grabResults = {};   // book_id -> {ok, text} : blijft even op de kaart staan
+
+const _grabTimers = {};
+function setGrabResult(id, ok, text) {
+  grabResults[id] = { ok, text };
+  renderBooks();
+  clearTimeout(_grabTimers[id]);
+  _grabTimers[id] = setTimeout(() => { delete grabResults[id]; renderBooks(); }, 45000);
+}
+
+async function revealBook(id) {
+  try {
+    const r = await fetch(`/api/books/${id}/reveal`, { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) wantedMsg('ok', 'Map geopend in Verkenner.');
+    else wantedMsg('err', d.detail || 'Kon de map niet openen.');
+  } catch (e) { wantedMsg('err', 'Kon de map niet openen: ' + e.message); }
+}
+
+let linkBookId = null;
+async function openLinkDialog(id) {
+  linkBookId = id;
+  const b = booksById[id] || {};
+  document.getElementById('link-text').textContent =
+    `Kies een bestand uit je bibliotheekmap voor "${b.title || ('boek ' + id)}".`;
+  document.getElementById('link-list').innerHTML = '<div class="empty">Bestanden laden…</div>';
+  document.getElementById('link-overlay').style.display = 'flex';
+  let d;
+  try { d = await (await fetch('/api/library/files')).json(); }
+  catch (e) { document.getElementById('link-list').innerHTML = '<div class="msg err">Kon de map niet lezen.</div>'; return; }
+  const files = d.files || [];
+  if (!files.length) {
+    document.getElementById('link-list').innerHTML =
+      `<div class="empty">Geen ebook-bestanden gevonden in ${escapeHtml(d.folder || 'de bibliotheekmap')}.</div>`;
+    return;
+  }
+  files.sort((a, c) => (a.linked_to ? 1 : 0) - (c.linked_to ? 1 : 0) || a.name.localeCompare(c.name, 'nl'));
+  document.getElementById('link-list').innerHTML = files.map(f => `
+    <div class="result-item">
+      <span style="color:var(--faint);display:flex;flex:none;">${icon('file',15)}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(f.name)}</div>
+        <div class="meta" style="font-size:12px;">${formatSize(f.size)}${f.linked_to ? ' · al gekoppeld aan “' + escapeHtml(f.linked_to) + '”' : ''}</div>
+      </div>
+      <button class="btn small ${f.linked_to ? 'secondary' : ''}" onclick='linkFile(${JSON.stringify(f.path).replace(/'/g, "&#39;")})'>Koppelen</button>
+    </div>`).join('');
+}
+async function linkFile(path) {
+  const res = await fetch(`/api/books/${linkBookId}/link`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  });
+  const d = await res.json().catch(() => ({}));
+  document.getElementById('link-overlay').style.display = 'none';
+  if (!res.ok) { wantedMsg('err', d.detail || 'Koppelen mislukt.'); return; }
+  const extra = (d.freed && d.freed.length) ? ` "${d.freed.join('", "')}" staat weer op "Gewenst".` : '';
+  wantedMsg('ok', `Bestand gekoppeld — boek staat nu op "Binnengehaald".${extra}`);
+  loadBooks();
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.filter === f));
+  renderBooks();
+}
+function toggleSelect() {
+  selectMode = !selectMode;
+  selectedIds.clear();
+  document.getElementById('select-bar').style.display = selectMode ? 'flex' : 'none';
+  document.getElementById('select-toggle').classList.toggle('active', selectMode);
+  document.getElementById('select-all').checked = false;
+  loadBooks();
+}
+function updateSelCount() {
+  document.getElementById('select-count').textContent = selectedIds.size + ' geselecteerd';
+}
+function toggleOne(id, checked) {
+  if (checked) selectedIds.add(id); else selectedIds.delete(id);
+  document.querySelector(`.card[data-id="${id}"]`)?.classList.toggle('selected', checked);
+  updateSelCount();
+}
+function toggleSelectAll(checked) {
+  document.querySelectorAll('#books-list .selbox').forEach(cb => {
+    cb.checked = checked;
+    toggleOne(parseInt(cb.dataset.id), checked);
+  });
+}
+
+let _allBooks = [];
+async function loadBooks() {
+  const res = await fetch('/api/books');
+  _allBooks = await res.json();
+  renderBooks();
+}
+function filterBooks() { renderBooks(); }
+function renderBooks() {
+  const books = _allBooks;
+  booksById = {};
+  books.forEach(b => { booksById[b.id] = b; });
+  const list = document.getElementById('books-list');
+
+  // tellers op de filterknoppen
+  const counts = { all: books.length, wanted: 0, downloading: 0, downloaded: 0 };
+  books.forEach(b => { if (counts[b.status] != null) counts[b.status]++; });
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    const f = btn.dataset.filter;
+    const base = { all:'Alles', wanted:'Gewenst', downloading:'Downloadt', downloaded:'Binnengehaald' }[f];
+    btn.innerHTML = `${base} <span class="fc">${counts[f] ?? 0}</span>`;
+  });
+
+  let shown = books.slice().sort((a, b) =>
+    (a.title || '').localeCompare(b.title || '', 'nl', { sensitivity: 'base' }));
+  if (currentFilter !== 'all') shown = shown.filter(b => b.status === currentFilter);
+  const q = (document.getElementById('book-filter')?.value || '').trim().toLowerCase();
+  if (q) shown = shown.filter(b =>
+    (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q));
+
+  if (!books.length) {
+    list.innerHTML = `<div class="empty">${icon('book',24)}<span>Nog geen boeken. Zoek er hierboven een op.</span></div>`;
+    return;
+  }
+  if (!shown.length) {
+    list.innerHTML = `<div class="empty">Geen boeken ${q ? 'voor die filter' : 'in deze weergave'}.</div>`;
+    return;
+  }
+  // opruimen: selectie beperken tot nog bestaande boeken
+  selectedIds.forEach(id => { if (!booksById[id]) selectedIds.delete(id); });
+
+  list.innerHTML = shown.map(b => {
+    const pct = Math.round((b.progress || 0) * 100);
+    const monitored = (b.monitored == null ? 1 : b.monitored);
+    const checked = selectedIds.has(b.id);
+    return `
+    <div class="card${checked ? ' selected' : ''}${selectMode ? ' compact' : ''}" data-id="${b.id}">
+      ${selectMode ? `<input type="checkbox" class="selbox" data-id="${b.id}" ${checked ? 'checked' : ''}
+          onchange="toggleOne(${b.id}, this.checked)">` : ''}
+      <img class="cover" src="${escapeHtml(coverSrc(b))}" onerror="coverErr(this)" loading="lazy" alt="">
+      <div class="body">
+        <div class="title">${escapeHtml(b.title)}${b.year ? ` <span class="yr">(${b.year})</span>` : ''}</div>
+        <div class="meta">
+          <span>${escapeHtml(b.author || 'onbekende auteur')}</span>
+          ${b.language ? `<span class="sep">·</span>${langTag(b.language)}` : ''}
+          <span class="pill ${b.status}">${statusLabel(b.status)}</span>
+          <button class="langtoggle" title="Voorkeurstaal om naar te zoeken (klik om te wisselen)"
+              onclick="cyclePrefLang(${b.id})">zoekt: ${prefLangLabel(b)}</button>
+        </div>
+        ${searchingById[b.id] ? `
+          <div class="searching-line"><span class="pulse"></span>${escapeHtml(searchPhaseText(searchingById[b.id]))}…</div>` : ''}
+        ${b.status === 'downloading' ? `
+          <div class="progress"><div style="width:${pct}%;"></div></div>
+          <div class="meta" style="margin-top:6px;">${pct}% · ${escapeHtml(b.dl_state || '')} ${b.grabbed_release ? '· ' + escapeHtml(b.grabbed_release) : ''}</div>` : ''}
+        ${b.status === 'downloaded' && b.library_path ? `
+          <div class="ok-line" title="${escapeHtml(b.library_path)}">${icon('check',15)}<span>in bibliotheek — <button class="linkbtn" onclick="revealBook(${b.id})">map openen</button></span></div>` : ''}
+        ${grabResults[b.id] && !searchingById[b.id] ? `
+          <div class="${grabResults[b.id].ok ? 'ok-line' : 'err-line'}">${grabResults[b.id].ok ? icon('check',15) : icon('error',15)}<span>${escapeHtml(grabResults[b.id].text)}</span></div>` : ''}
+        ${b.last_error && !searchingById[b.id] && !grabResults[b.id] ? `<div class="err-line">${icon('error',15)}<span>${escapeHtml(b.last_error)}</span></div>` : ''}
+      </div>
+      ${selectMode ? '' : `<div class="actions">
+        <button class="icon ${monitored ? 'on' : ''}" title="${monitored ? 'Automatisch zoeken staat aan' : 'Automatisch zoeken staat uit'}"
+          onclick="toggleMonitored(${b.id}, ${monitored ? 0 : 1})">${icon('star', 16, !!monitored)}</button>
+        ${(b.status === 'wanted' || b.status === 'failed')
+          ? (searchingById[b.id]
+              ? `<button class="icon" disabled title="Zoeken…">${icon('search',16)}</button>`
+              : `<button class="icon" onclick="grabBest(${b.id}, this)" title="${b.status === 'failed' ? 'Opnieuw zoeken' : 'Nu zoeken'} — beste epub meteen ophalen">${icon(b.status === 'failed' ? 'rescan' : 'search',16)}</button>`) : ''}
+        <button class="icon" onclick="searchBook(${b.id})" title="Kies zelf — een release handmatig kiezen">${icon('list',16)}</button>
+        ${b.status !== 'downloading'
+          ? `<button class="icon" onclick="openLinkDialog(${b.id})" title="Bestand koppelen uit de bibliotheekmap">${icon('link',16)}</button>` : ''}
+        <button class="icon danger" onclick="deleteBook(${b.id})" title="Verwijderen">${icon('x',16)}</button>
+      </div>`}
+    </div>`;
+  }).join('');
+  updateSelCount();
+}
+
+function effectivePrefLang(b) {
+  if (b.pref_language === 'en' || b.pref_language === 'nl') return b.pref_language;
+  return (b.language === 'en') ? 'en' : 'nl';
+}
+function prefLangLabel(b) {
+  const l = effectivePrefLang(b);
+  return (l === 'en' ? 'EN' : 'NL') + (b.pref_language ? '' : ' (auto)');
+}
+async function cyclePrefLang(id) {
+  const b = booksById[id]; if (!b) return;
+  // cyclus: auto -> en -> nl -> auto
+  const cur = b.pref_language || '';
+  const next = cur === '' ? 'en' : (cur === 'en' ? 'nl' : '');
+  await fetch(`/api/books/${id}/pref-language`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ pref_language: next })
+  });
+  loadBooks();
+}
+
+async function toggleMonitored(id, val) {
+  await fetch(`/api/books/${id}/monitored`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ monitored: !!val })
+  });
+  loadBooks();
+}
+
+async function grabBest(id, btn) {
+  btn.disabled = true;
+  setTimeout(loadStatus, 400);  // laat de voortgang meteen zien
+  try {
+    const res = await fetch(`/api/books/${id}/grab-best`, { method:'POST' });
+    const d = await res.json();
+    if (!res.ok) setGrabResult(id, false, d.detail || 'mislukt');
+    else if (d.grabbed) setGrabResult(id, true, `gevonden via ${SRC_LABELS[d.source] || d.source} — wordt opgehaald`);
+    else setGrabResult(id, false, d.reason || 'niets bruikbaars gevonden');
+  } catch (e) {
+    setGrabResult(id, false, 'Fout: ' + e.message);
+  }
+  loadBooks(); loadStatus();
+}
+
+let pendingDeleteIds = [];
+function deleteBook(id) {
+  pendingDeleteIds = [id];
+  openDeleteDialog();
+}
+function openDeleteDialog() {
+  const ids = pendingDeleteIds.length ? pendingDeleteIds : [...selectedIds];
+  if (!ids.length) { wantedMsg('err', 'Niets geselecteerd.'); return; }
+  pendingDeleteIds = ids;
+  const anyDownloaded = ids.some(id => booksById[id] && booksById[id].library_path);
+  document.getElementById('delete-text').textContent =
+    ids.length === 1
+      ? `"${(booksById[ids[0]] || {}).title || 'dit boek'}" verwijderen uit je lijst?`
+      : `${ids.length} boeken verwijderen uit je lijst?`;
+  const df = document.getElementById('delete-files');
+  df.checked = false;
+  df.parentElement.style.display = anyDownloaded ? 'flex' : 'none';
+  document.getElementById('delete-overlay').style.display = 'flex';
+}
+function closeDeleteDialog() {
+  document.getElementById('delete-overlay').style.display = 'none';
+  pendingDeleteIds = [];
+}
+async function confirmDelete() {
+  const ids = pendingDeleteIds;
+  const deleteFiles = document.getElementById('delete-files').checked;
+  closeDeleteDialog();
+  const res = await fetch('/api/books/delete', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ ids, delete_files: deleteFiles })
+  });
+  const d = await res.json();
+  if (!res.ok) { wantedMsg('err', d.detail || 'verwijderen mislukt'); return; }
+  let msg = `${d.deleted} verwijderd`;
+  if (d.removed_files && d.removed_files.length) msg += `, ${d.removed_files.length} bestand(en) gewist`;
+  if (d.errors && d.errors.length) msg += `. Fouten: ${d.errors.join('; ')}`;
+  wantedMsg(d.errors && d.errors.length ? 'err' : 'ok', msg);
+  selectedIds.clear();
+  if (selectMode) toggleSelect();
+  else loadBooks();
+}
+async function searchAll() {
+  wantedMsg('ok', 'Zoekronde gestart…');
+  const res = await fetch('/api/search-all', { method:'POST' });
+  const d = await res.json();
+  if (!res.ok) { wantedMsg('err', d.detail || 'fout'); return; }
+  if (d.skipped) { wantedMsg('ok', 'Er liep al een zoekronde.'); }
+  else { wantedMsg('ok', `Klaar: ${d.searched} gezocht, ${d.grabbed} gedownload, ${d.errors} fouten.`); }
+  loadBooks(); loadStatus();
+}
+
+/* ---------- Handmatig zoeken ---------- */
+async function searchBook(id) {
+  const b = booksById[id] || { title: 'boek ' + id };
+  currentBookId = id; currentBookTitle = b.title;
+  document.getElementById('show-all-formats').checked = false;
+  showTab('search-panel');
+  document.getElementById('search-head').innerHTML = `
+    <img class="cover" src="${escapeHtml(coverSrc(b))}" onerror="coverErr(this)" alt="" style="width:52px;height:78px;">
+    <div class="body">
+      <div class="title" style="font-size:17px;">${escapeHtml(b.title || '')}</div>
+      <div class="meta" style="margin-top:4px;">${escapeHtml(b.author || '')}${b.year ? ' · ' + b.year : ''} · zoekt: ${b.language ? langTag(b.language) : '—'}</div>
+    </div>`;
+  rerunSearch();
+}
+function rerunSearch() {
+  if (currentBookId != null) doSearch(currentBookId);
+}
+const SRC_LABELS = { gutenberg:'Gutenberg', standardebooks:'Standard Ebooks', libgen:'LibGen', zlibrary:'Z-Library', prowlarr:'Torrent' };
+async function doSearch(id) {
+  const all = document.getElementById('show-all-formats').checked;
+  document.getElementById('search-results').innerHTML = '<div class="empty">Zoeken bij alle bronnen… (kan even duren)</div>';
+  try {
+    const res = await fetch(`/api/books/${id}/search?all=${all ? 1 : 0}`, { method:'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Onbekende fout');
+    if (!data.length) {
+      document.getElementById('search-results').innerHTML =
+        '<div class="empty">Niets gevonden bij de ingeschakelde bronnen.</div>';
+      return;
+    }
+    const SRC_CLASS = { gutenberg:'free', standardebooks:'free', zlibrary:'acct', libgen:'acct' };
+    document.getElementById('search-results').innerHTML = `<div class="listbox">${data.map(r => {
+      const fmt = r.format === 'epub'
+        ? '<span class="badge">EPUB</span>'
+        : `<span class="badge conv">${escapeHtml((r.format||'').toUpperCase())}${icon('arrow',10)}EPUB</span>`;
+      const extra = r.kind === 'torrent'
+        ? `${escapeHtml((r.download && r.download.indexer) || '')} · ${r.seeders ?? '?'} seeders`
+        : escapeHtml(r.detail || '');
+      return `
+      <div class="result-item${r.usable === false ? ' dim' : ''}">
+        <div style="min-width:0;">
+          <div>${escapeHtml(r.title)} ${fmt}<span class="badge ${SRC_CLASS[r.source] || ''}">${SRC_LABELS[r.source] || r.source}</span></div>
+          <div class="meta" style="font-size:13px;margin-top:4px;">
+            ${extra}${r.size ? ' · ' + formatSize(r.size) : ''}${r.language ? ' · ' + langLabel(r.language) : ''}
+          </div>
+          ${r.usable === false ? `<div class="warn-line">${icon('warn',14)}<span>${escapeHtml(r.sane_reason || 'wordt niet automatisch gepakt')}</span></div>` : ''}
+        </div>
+        <button class="btn small${r.usable === false ? ' secondary' : ''}" onclick='grabCandidate(${JSON.stringify(r).replace(/'/g,"&#39;")})'>${icon('download',13)} Download</button>
+      </div>`;
+    }).join('')}</div>`;
+  } catch (e) {
+    document.getElementById('search-results').innerHTML = `<div class="msg err">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function grabCandidate(cand) {
+  const btns = document.querySelectorAll('#search-results button');
+  btns.forEach(b => b.disabled = true);
+  const res = await fetch(`/api/books/${currentBookId}/grab`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(cand)
+  });
+  const data = await res.json();
+  btns.forEach(b => b.disabled = false);
+  if (!res.ok) { alert('Fout: ' + data.detail); return; }
+  alert(cand.kind === 'torrent' ? 'Naar qBittorrent gestuurd.' : 'Gedownload en toegevoegd aan je bibliotheek.');
+  showTab('wanted'); loadBooks();
+}
+
+/* ---------- Instellingen ---------- */
+async function loadSettings() {
+  const s = await (await fetch('/api/settings')).json();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  set('prowlarr_url', s.prowlarr_url);
+  set('qbittorrent_url', s.qbittorrent_url);
+  set('qbittorrent_username', s.qbittorrent_username);
+  set('search_interval_hours', s.search_interval_hours || 6);
+  set('min_seeders', s.min_seeders ?? 1);
+  set('prowlarr_categories', s.prowlarr_categories || '');
+  set('stalled_hours', s.stalled_hours || 24);
+  set('library_folder', s.library_folder || '');
+  set('calibre_path', s.calibre_path || '');
+  const langs = (s.reading_languages || 'en,nl').split(',');
+  document.getElementById('lang_en').checked = langs.includes('en');
+  document.getElementById('lang_nl').checked = langs.includes('nl');
+  document.getElementById('auto_download').checked = String(s.auto_download) === '1' || s.auto_download === true;
+  document.getElementById('accept_kindle').checked = String(s.accept_kindle) === '1' || s.accept_kindle === true;
+  document.getElementById('calibre_hint').innerHTML = s.calibre_found
+    ? `✓ Calibre gevonden: <code>${escapeHtml(s.calibre_found)}</code>`
+    : '⚠ Geen Calibre gevonden — installeer het van calibre-ebook.com, dan werkt converteren. Zonder Calibre blijft het epub-only.';
+  document.getElementById('embed_metadata').checked = String(s.embed_metadata) === '1' || s.embed_metadata === true;
+  document.getElementById('embed_hint').innerHTML = s.ebook_meta_found
+    ? '✓ Calibre gevonden — metadata wordt geschreven.'
+    : '⚠ Vereist Calibre (calibre-ebook.com). Zonder Calibre gebeurt er niks.';
+  set('opds_url', s.opds_url || (location.origin + '/opds'));
+  set('opds_user', s.opds_user || 'ebookarr');
+  document.getElementById('opds_password').value = '';
+  document.getElementById('opds_auth').checked = !!s.opds_password_set;
+  opdsAuthToggle();
+  document.getElementById('opds_hint').innerHTML = s.opds_password_set
+    ? '✓ beveiligd — vul in je leesapp deze gebruikersnaam en je wachtwoord in.'
+    : 'Zonder wachtwoord: iedereen op je netwerk kan je bibliotheek zien. Voor thuisgebruik meestal prima.';
+  document.getElementById('prowlarr_api_key').value = '';
+  document.getElementById('qbittorrent_password').value = '';
+  document.getElementById('prowlarr_api_key_hint').textContent =
+    s.prowlarr_api_key_set ? '✓ opgeslagen (laat leeg om te behouden)' : '⚠ nog niets opgeslagen';
+  document.getElementById('qbittorrent_password_hint').textContent =
+    s.qbittorrent_password_set ? '✓ opgeslagen (laat leeg om te behouden)' : '⚠ nog niets opgeslagen';
+
+  const chk = (id, v) => { document.getElementById(id).checked = String(v) === '1' || v === true; };
+  chk('src_gutenberg', s.src_gutenberg); chk('src_standardebooks', s.src_standardebooks);
+  chk('src_libgen', s.src_libgen); chk('src_zlibrary', s.src_zlibrary);
+  set('libgen_mirror', s.libgen_mirror || '');
+  set('zlib_domain', s.zlib_domain || '');
+  document.getElementById('zlib_email').value = '';
+  document.getElementById('zlib_password').value = '';
+  document.getElementById('annas_key').value = '';
+  const active = (s.sources_enabled || []).map(x => SRC_LABELS[x] || x).join(' → ');
+  const q = s.zlib_quota;
+  const quotaTxt = q ? ` Vandaag gebruikt: <b>${q.used}/${q.limit}</b>${q.resets_in ? ` (reset over ${escapeHtml(q.resets_in)})` : ''}.` : '';
+  document.getElementById('zlib_hint').innerHTML =
+    (s.zlib_email_set ? '✓ Z-Library inloggegevens opgeslagen. ' : '⚠ vul e-mail + wachtwoord in om Z-Library te gebruiken. ') +
+    (active ? `Actieve volgorde: <b>${escapeHtml(active)}</b>.` : 'Geen bronnen actief.') + quotaTxt;
+}
+
+function settingsPayload() {
+  return {
+    prowlarr_url: document.getElementById('prowlarr_url').value.trim(),
+    prowlarr_api_key: document.getElementById('prowlarr_api_key').value,
+    qbittorrent_url: document.getElementById('qbittorrent_url').value.trim(),
+    qbittorrent_username: document.getElementById('qbittorrent_username').value.trim(),
+    qbittorrent_password: document.getElementById('qbittorrent_password').value,
+    search_interval_hours: parseInt(document.getElementById('search_interval_hours').value) || 6,
+    auto_download: document.getElementById('auto_download').checked,
+    min_seeders: parseInt(document.getElementById('min_seeders').value) || 0,
+    prowlarr_categories: document.getElementById('prowlarr_categories').value.trim(),
+    library_folder: document.getElementById('library_folder').value.trim(),
+    reading_languages: [
+      document.getElementById('lang_en').checked ? 'en' : '',
+      document.getElementById('lang_nl').checked ? 'nl' : '',
+    ].filter(Boolean).join(',') || 'en,nl',
+    stalled_hours: parseInt(document.getElementById('stalled_hours').value) || 24,
+    accept_kindle: document.getElementById('accept_kindle').checked,
+    calibre_path: document.getElementById('calibre_path').value.trim(),
+    embed_metadata: document.getElementById('embed_metadata').checked,
+    opds_auth: document.getElementById('opds_auth').checked,
+    opds_user: document.getElementById('opds_user').value.trim() || 'ebookarr',
+    opds_password: document.getElementById('opds_password').value,
+    src_gutenberg: document.getElementById('src_gutenberg').checked,
+    src_standardebooks: document.getElementById('src_standardebooks').checked,
+    src_libgen: document.getElementById('src_libgen').checked,
+    src_zlibrary: document.getElementById('src_zlibrary').checked,
+    libgen_mirror: document.getElementById('libgen_mirror').value.trim(),
+    zlib_domain: document.getElementById('zlib_domain').value.trim(),
+    zlib_email: document.getElementById('zlib_email').value.trim(),
+    zlib_password: document.getElementById('zlib_password').value,
+    annas_key: document.getElementById('annas_key').value.trim(),
+  };
+}
+async function saveSettingsQuiet() {
+  await fetch('/api/settings', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(settingsPayload())
+  });
+}
+async function saveSettings() {
+  await saveSettingsQuiet();
+  showMsg('ok', 'Instellingen opgeslagen.');
+  loadSettings(); loadStatus();
+}
+async function testProwlarr() {
+  await saveSettingsQuiet();
+  const res = await fetch('/api/settings/test-prowlarr', { method:'POST' });
+  const d = await res.json();
+  showMsg(res.ok ? 'ok' : 'err', res.ok ? `Verbonden! Prowlarr ${d.version}` : d.detail);
+  loadStatus();
+}
+async function testQbittorrent() {
+  await saveSettingsQuiet();
+  const res = await fetch('/api/settings/test-qbittorrent', { method:'POST' });
+  const d = await res.json();
+  showMsg(res.ok ? 'ok' : 'err', res.ok ? `Verbonden! qBittorrent ${d.version}` : d.detail);
+  loadStatus();
+}
+function opdsAuthToggle() {
+  document.getElementById('opds_creds').style.display =
+    document.getElementById('opds_auth').checked ? 'flex' : 'none';
+}
+function copyOpds() {
+  const el = document.getElementById('opds_url');
+  el.select();
+  navigator.clipboard?.writeText(el.value).then(
+    () => showMsg('ok', 'Link gekopieerd.'),
+    () => showMsg('ok', 'Selecteer en kopieer de link handmatig.'));
+}
+
+let _settingsMsgT;
+function showMsg(type, text) {
+  document.getElementById('settings-msg').innerHTML = `<div class="msg ${type}">${icon(type === 'ok' ? 'check' : 'error', 16)}<span>${escapeHtml(text)}</span></div>`;
+  clearTimeout(_settingsMsgT);
+  _settingsMsgT = setTimeout(() => {
+    const el = document.getElementById('settings-msg'); if (el) el.innerHTML = '';
+  }, 5000);
+}
+
+/* ---------- Overlays sluiten (Esc + klik op de achtergrond) ---------- */
+document.querySelectorAll('.overlay').forEach(ov => {
+  ov.addEventListener('mousedown', e => { if (e.target === ov) ov.style.display = 'none'; });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.overlay').forEach(ov => { ov.style.display = 'none'; });
+});
+
+/* ---------- Instellingen: subnav volgt de zichtbare sectie ---------- */
+(() => {
+  const links = [...document.querySelectorAll('.subnav a')];
+  if (!links.length) return;
+  const spy = () => {
+    const panel = document.getElementById('settings');
+    if (!panel || panel.offsetParent === null) return;
+    let cur = links[0].getAttribute('href').slice(1);
+    for (const a of links) {
+      const el = document.getElementById(a.getAttribute('href').slice(1));
+      if (el && el.getBoundingClientRect().top <= 96) cur = a.getAttribute('href').slice(1);
+    }
+    links.forEach(a => a.classList.toggle('spy', a.getAttribute('href').slice(1) === cur));
+  };
+  window.addEventListener('scroll', spy, { passive: true });
+  const stab = document.querySelector('.tab-btn[data-tab="settings"]');
+  if (stab) stab.addEventListener('click', () => setTimeout(spy, 0));
+})();
+
+/* ---------- Init ---------- */
+loadBooks();
+loadStatus();
+syncPollRate();
+</script>
+</body>
+</html>

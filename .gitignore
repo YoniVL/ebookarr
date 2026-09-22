@@ -1,0 +1,26 @@
+# Virtuele omgeving (opnieuw op te bouwen met requirements.txt)
+venv/
+
+# Database — bevat versleutelde API-keys/wachtwoorden én je persoonlijke boekenlijst
+ebookarr.db
+ebookarr.db-journal
+ebookarr.db-wal
+ebookarr.db-shm
+
+# Dagelijkse database-backups
+backups/
+
+# Logboeken
+*.log
+*.log.*
+
+# Python
+__pycache__/
+*.pyc
+.ruff_cache/
+
+# Editor/OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
