@@ -216,6 +216,10 @@ def _m011_kindle_sent(conn):
     _add_column(conn, "books", "kindle_sent_at TEXT")
 
 
+def _m012_custom_cover(conn):
+    _add_column(conn, "books", "custom_cover TEXT")
+
+
 MIGRATIONS = [
     _m001_initial,
     _m002_book_metadata,
@@ -228,6 +232,7 @@ MIGRATIONS = [
     _m009_kv_cache,
     _m010_book_series,
     _m011_kindle_sent,
+    _m012_custom_cover,
 ]
 
 

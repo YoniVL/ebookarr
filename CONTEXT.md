@@ -470,3 +470,5 @@ Het tabblad Volgen (auteurs/reeksen volgen + suggesties) is verwijderd (routes, 
 Kindle: handmatig markeren als (niet) verstuurd via POST /api/kindle/mark {ids, sent} (knoppen op de Kindle-tab).
 
 Gegevens aanpassen: POST /api/books/{id}/metadata (services.update_book_metadata) past titel/auteur/jaar/reeks/deel/taal/ISBN aan, schrijft ze in het epub (Calibre) en hernoemt het bestand volgens het vaste patroon. UI: potlood-icoon op de kaart.
+
+Eigen cover: POST/DELETE /api/books/{id}/cover (data-URL of link; opgeslagen in covers/, kolom books.custom_cover, migratie m012), GET /api/books/{id}/cover-file. Wordt ook in het epub geschreven en in OPDS gebruikt. Bediening in het Gegevens-aanpassen-venster.

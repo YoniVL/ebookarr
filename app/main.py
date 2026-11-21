@@ -104,6 +104,11 @@ class BookMetaIn(BaseModel):
     isbn: str = ""
 
 
+class CoverIn(BaseModel):
+    data: str | None = None      # data-URL (base64) van een gekozen bestand
+    url: str | None = None       # of een link naar een afbeelding
+
+
 class KindleSendIn(BaseModel):
     ids: list[int]
 
@@ -384,10 +389,13 @@ def opds_author(name: str, request: Request):
 def opds_cover(book_id: int, request: Request):
     _opds_guard(request)
     with db.get_conn() as conn:
-        row = conn.execute("SELECT isbn, title, author, cover_url FROM books WHERE id=?",
+        row = conn.execute("SELECT isbn, title, author, cover_url, custom_cover FROM books WHERE id=?",
                            (book_id,)).fetchone()
     if not row:
         return Response(_BLANK_PX, media_type="image/png", status_code=404)
+    own = services.custom_cover_path(dict(row))
+    if own:
+        return FileResponse(own)
     url = services.resolve_cover(isbn=row["isbn"] or "", title=row["title"] or "",
                                  author=row["author"] or "", stored=row["cover_url"] or "")
     if url:
@@ -471,6 +479,36 @@ def edit_book_metadata(book_id: int, payload: BookMetaIn):
         return services.update_book_metadata(book_id, payload.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.get("/api/books/{book_id}/cover-file")
+def book_cover_file(book_id: int):
+    book = _get_book_or_404(book_id)
+    p = services.custom_cover_path(book)
+    if not p:
+        return Response(_BLANK_PX, media_type="image/png", status_code=404)
+    return FileResponse(p, headers={"Cache-Control": "public, max-age=31536000"})
+
+
+@app.post("/api/books/{book_id}/cover")
+def set_book_cover(book_id: int, payload: CoverIn):
+    _get_book_or_404(book_id)
+    raw = None
+    if payload.data:
+        try:
+            raw = base64.b64decode(payload.data.split(",", 1)[-1], validate=False)
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(status_code=400, detail="Ongeldige afbeelding.") from e
+    try:
+        return services.set_custom_cover(book_id, data=raw, url=payload.url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.delete("/api/books/{book_id}/cover")
+def reset_book_cover(book_id: int):
+    _get_book_or_404(book_id)
+    return services.set_custom_cover(book_id)
 
 
 @app.post("/api/books/delete")

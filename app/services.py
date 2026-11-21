@@ -975,8 +975,9 @@ def _embed_metadata(book, epub_path: Path):
             args += ["--index", f"{float(book['series_index']):g}"]
 
     cover_tmp = None
+    own = custom_cover_path(book)
     try:
-        url = resolve_cover(isbn=book.get("isbn") or "", title=book.get("title") or "",
+        url = None if own else resolve_cover(isbn=book.get("isbn") or "", title=book.get("title") or "",
                             author=book.get("author") or "", stored=book.get("cover_url") or "")
         if url:
             r = requests.get(url, timeout=10)
@@ -986,6 +987,8 @@ def _embed_metadata(book, epub_path: Path):
                 args += ["--cover", str(cover_tmp)]
     except requests.RequestException:
         pass
+    if own:
+        args += ["--cover", str(own)]
 
     try:
         _run_hidden(args, capture_output=True, timeout=120, check=False)
@@ -1457,6 +1460,82 @@ def link_book_to_file(book_id: int, path: str):
     except Exception as e:  # noqa: BLE001
         log.warning("Boek %s: metadata schrijven na koppelen mislukt: %s", book_id, e)
     return {"id": book_id, "library_path": str(p), "freed": freed}
+
+
+# ---------- Eigen cover ----------
+
+COVER_DIR = db.DB_PATH.parent / "covers"
+MAX_COVER_BYTES = 8 * 1024 * 1024
+
+
+def _sniff_image(data: bytes):
+    if data[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return ".gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+def custom_cover_path(book):
+    name = (book or {}).get("custom_cover")
+    if not name:
+        return None
+    p = COVER_DIR / name
+    return p if p.is_file() else None
+
+
+def set_custom_cover(book_id: int, data: bytes | None = None, url: str | None = None):
+    """Eigen cover instellen (bytes of URL) of — zonder beide — weer automatisch."""
+    with db.get_conn() as conn:
+        row = conn.execute("SELECT * FROM books WHERE id = ?", (book_id,)).fetchone()
+    if not row:
+        raise ValueError("Boek niet gevonden.")
+    book = dict(row)
+
+    old = custom_cover_path(book)
+    name = None
+    if data is None and url:
+        if not re.match(r"^https?://", url.strip(), re.I):
+            raise ValueError("Geef een link die met http:// of https:// begint.")
+        try:
+            r = requests.get(url.strip(), timeout=15, headers=_COVER_UA, stream=True)
+            r.raise_for_status()
+            data = r.raw.read(MAX_COVER_BYTES + 1, decode_content=True)
+        except requests.RequestException as e:
+            raise ValueError(f"Kon de afbeelding niet ophalen: {e}") from e
+    if data is not None:
+        if len(data) > MAX_COVER_BYTES:
+            raise ValueError("Afbeelding is te groot (max 8 MB).")
+        ext = _sniff_image(data)
+        if not ext:
+            raise ValueError("Dit is geen jpg-, png-, gif- of webp-afbeelding.")
+        COVER_DIR.mkdir(exist_ok=True)
+        name = f"{book_id}-{int(time.time())}{ext}"
+        (COVER_DIR / name).write_bytes(data)
+    with db.get_conn() as conn:
+        conn.execute("UPDATE books SET custom_cover = ? WHERE id = ?", (name, book_id))
+        conn.commit()
+    if old and old.name != name:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    book["custom_cover"] = name
+
+    note = ""
+    path = book.get("library_path")
+    if path and Path(path).is_file():
+        try:
+            _embed_metadata(book, Path(path))
+            note = "ook in het bestand gezet"
+        except Exception as e:  # noqa: BLE001
+            log.warning("Boek %s: cover in epub zetten mislukt: %s", book_id, e)
+            note = "opgeslagen, maar niet in het bestand kunnen zetten"
+    return {"custom_cover": name, "note": note}
 
 
 # ---------- Metadata van een boek handmatig aanpassen ----------

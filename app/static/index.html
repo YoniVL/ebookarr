@@ -445,6 +445,12 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
 .acts .ib{width:28px;height:28px}
 .acts{gap:0}
 
+.coveredit{display:flex;gap:20px;align-items:flex-start;margin-bottom:8px}
+.ce-prev{width:96px;flex:none;aspect-ratio:2/3;border-radius:var(--r-m);overflow:hidden;background:var(--surface-2)}
+.ce-prev img,.ce-prev .nocover{width:100%;height:100%;object-fit:cover;display:block}
+.ce-body{flex:1;min-width:0}
+@media (max-width:520px){.coveredit{flex-direction:column}}
+
 </style>
 </head>
 <body>
@@ -789,6 +795,23 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
     </div>
     <div class="dscroll">
       <div id="edit-msg" aria-live="polite"></div>
+      <div class="coveredit">
+        <div class="ce-prev" id="edit-cover"></div>
+        <div class="ce-body">
+          <div class="fl" style="margin-top:0">Cover</div>
+          <div class="frow" style="flex-wrap:wrap">
+            <button class="btn btn-sm" type="button" onclick="$('edit-cover-file').click()"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg>Afbeelding kiezen…</button>
+            <button class="btn btn-sm btn-flat" type="button" id="edit-cover-reset" onclick="resetCover()"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg>Automatisch</button>
+          </div>
+          <input type="file" id="edit-cover-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onchange="uploadCoverFile(this)">
+          <div class="frow" style="margin-top:8px">
+            <label class="sr" for="edit-cover-url">Link naar een afbeelding</label>
+            <input class="field sm" id="edit-cover-url" placeholder="…of plak een link naar een afbeelding" autocomplete="off">
+            <button class="btn btn-sm" type="button" onclick="coverFromUrl()">Gebruiken</button>
+          </div>
+          <p class="hint" id="edit-cover-hint" style="margin-top:8px"></p>
+        </div>
+      </div>
       <label class="fl" for="edit_title">Titel</label>
       <input class="field" id="edit_title" autocomplete="off">
       <label class="fl" for="edit_author">Auteur</label>
@@ -847,6 +870,7 @@ function initials(t) {
 
 // Cover via de server (die kiest de beste bron); ontbreekt hij, dan een nette placeholder met initialen
 function coverSrc(o) {
+  if (o.custom_cover && o.id) return `/api/books/${o.id}/cover-file?v=${encodeURIComponent(o.custom_cover)}`;
   const p = new URLSearchParams();
   if (o.isbn) p.set('isbn', o.isbn);
   if (o.title) p.set('title', o.title);
@@ -1758,11 +1782,47 @@ function openEditDialog(id) {
   $('edit_series_index').value = b.series_index != null ? b.series_index : '';
   $('edit_isbn').value = b.isbn || '';
   $('edit-msg').innerHTML = '';
+  renderEditCover();
+  $('edit-cover-url').value = '';
   $('edit-file-hint').textContent = b.library_path
     ? 'Dit boek staat al in je bibliotheek: de gegevens worden ook in het epub geschreven en het bestand krijgt de bijbehorende naam (Auteur - Reeks 01 - Titel (jaar)).'
     : 'Het boek is nog niet binnen; de gegevens worden gebruikt bij het zoeken en in de bestandsnaam.';
   openModal('edit-overlay', 'edit_title');
 }
+function renderEditCover() {
+  const b = booksById[editBookId]; if (!b) return;
+  $('edit-cover').innerHTML = coverHtml(b);
+  $('edit-cover-reset').hidden = !b.custom_cover;
+  $('edit-cover-hint').textContent = b.custom_cover
+    ? 'Eigen cover ingesteld' + (b.library_path ? ' — ook in het epub-bestand gezet.' : '.')
+    : 'Nu de automatisch gevonden cover. Kies een jpg/png/webp (max 8 MB) of plak een link.';
+}
+async function postCover(method, body) {
+  const res = await fetch(`/api/books/${editBookId}/cover`, {
+    method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { $('edit-msg').innerHTML = noteHtml('err', d.detail || 'Cover aanpassen mislukt.'); return false; }
+  $('edit-msg').innerHTML = noteHtml('ok', 'Cover aangepast' + (d.note ? ' — ' + d.note : '') + '.');
+  await loadBooks();
+  renderEditCover();
+  if ($('kindle').classList.contains('active')) renderKindle();
+  return true;
+}
+function uploadCoverFile(input) {
+  const f = input.files && input.files[0]; input.value = '';
+  if (!f) return;
+  if (f.size > 8 * 1024 * 1024) { $('edit-msg').innerHTML = noteHtml('err', 'Afbeelding is te groot (max 8 MB).'); return; }
+  const rd = new FileReader();
+  rd.onload = () => postCover('POST', { data: rd.result });
+  rd.readAsDataURL(f);
+}
+async function coverFromUrl() {
+  const u = $('edit-cover-url').value.trim();
+  if (!u) { $('edit-cover-url').focus(); return; }
+  if (await postCover('POST', { url: u })) $('edit-cover-url').value = '';
+}
+function resetCover() { postCover('DELETE'); }
 async function saveEdit() {
   const btn = $('edit-save'); btn.disabled = true;
   try {
