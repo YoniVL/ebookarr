@@ -41,6 +41,19 @@ def _normalize_isbn(q):
     return None
 
 
+def _isbn13(isbn):
+    """Kanonieke ISBN-13 (ISBN-10 wordt omgerekend), zodat 10- en 13-cijferige
+    vormen van dezelfde editie met elkaar te vergelijken zijn."""
+    s = re.sub(r"[^0-9Xx]", "", isbn or "").upper()
+    if len(s) == 13 and s.isdigit():
+        return s
+    if len(s) == 10 and s[:9].isdigit():
+        core = "978" + s[:9]
+        chk = (10 - sum(int(c) * (1 if i % 2 == 0 else 3) for i, c in enumerate(core)) % 10) % 10
+        return core + str(chk)
+    return None
+
+
 def _language_from_isbn(isbn):
     """De ISBN-13 'registration group' zegt in welke taalregio de editie is
     uitgegeven — betrouwbaarder dan de (soms foute) taal-tag van Google/OpenLibrary.
@@ -203,6 +216,49 @@ def _google(query, language, limit, start_index=0):
         lambda: _google_raw(query, language, limit, start_index))
 
 
+def _google_key():
+    from . import db
+    return (db.get_setting("google_books_key") or "").strip()
+
+
+def _google_get(params):
+    """Google Books-call, met de eigen API-sleutel als die is ingesteld (veel
+    ruimere limiet dan anoniem). Wordt de sleutel geweigerd, dan één keer
+    anoniem opnieuw proberen i.p.v. alles te laten falen."""
+    key = _google_key()
+    if key:
+        resp = requests.get(GOOGLE_URL, params={**params, "key": key}, timeout=HTTP_TIMEOUT)
+        if resp.status_code not in (400, 403):
+            return resp
+        log.warning("Google Books weigerde de API-sleutel (HTTP %s) — anoniem opnieuw",
+                    resp.status_code)
+    return requests.get(GOOGLE_URL, params=params, timeout=HTTP_TIMEOUT)
+
+
+def test_google_key():
+    """(ok, melding) — voor de knop 'Sleutel testen' in Instellingen."""
+    global _google_cooldown_until
+    key = _google_key()
+    if not key:
+        return False, "Er is nog geen sleutel ingevuld."
+    try:
+        resp = requests.get(GOOGLE_URL, params={"q": "isbn:9780937986172", "maxResults": 1,
+                                                "key": key}, timeout=HTTP_TIMEOUT)
+    except requests.RequestException as e:
+        return False, f"Google is niet bereikbaar: {e}"
+    if resp.status_code == 200:
+        _google_cooldown_until = 0.0
+        return True, "Sleutel werkt."
+    hint = {400: "ongeldige sleutel",
+            403: "Books API niet ingeschakeld of de sleutel is te strikt beperkt",
+            429: "limiet bereikt"}.get(resp.status_code, f"HTTP {resp.status_code}")
+    try:
+        detail = resp.json().get("error", {}).get("message", "")
+    except ValueError:
+        detail = ""
+    return False, f"Google weigert de sleutel ({hint}). {detail}".strip()
+
+
 def _google_raw(query, language, limit, start_index=0):
     global _google_cooldown_until
     if time.time() < _google_cooldown_until:
@@ -216,7 +272,7 @@ def _google_raw(query, language, limit, start_index=0):
     }
     if language in _LANG_MAP and not isbn:
         params["langRestrict"] = _LANG_MAP[language][0]
-    resp = requests.get(GOOGLE_URL, params=params, timeout=HTTP_TIMEOUT)
+    resp = _google_get(params)
     if resp.status_code == 429:
         # oplopende afkoeltijd: 10 min -> 30 -> 60 (blijf niet bonzen)
         prev = max(_google_cooldown_until - time.time(), 0)
@@ -295,6 +351,53 @@ def _openlibrary_raw(query, language, limit):
             "description": "",
         })
     return out
+
+
+def _openlibrary_edition(isbn):
+    return _disk_cached("ol_isbn", (isbn,), lambda: _openlibrary_edition_raw(isbn))
+
+
+def _openlibrary_edition_raw(isbn):
+    """De exacte editie bij een ISBN (api/books) — i.p.v. search.json, dat het
+    bijbehorende 'werk' teruggeeft met de titel van een willekeurige editie
+    (bv. de Spaanse vertaling)."""
+    resp = requests.get("https://openlibrary.org/api/books", params={
+        "bibkeys": f"ISBN:{isbn}", "format": "json", "jscmd": "details"},
+        timeout=HTTP_TIMEOUT)
+    resp.raise_for_status()
+    rec = (resp.json() or {}).get(f"ISBN:{isbn}")
+    d = (rec or {}).get("details") or {}
+    title = (d.get("title") or "").strip()
+    if not title:
+        return []
+    sub_title = (d.get("subtitle") or "").strip()
+    if sub_title:
+        title = f"{title}: {sub_title}"
+    authors = ", ".join(a.get("name", "") for a in d.get("authors", []) if a.get("name"))
+    if not authors:
+        authors = (d.get("by_statement") or "").strip().rstrip(".")
+    year = None
+    m = re.search(r"(\d{4})", str(d.get("publish_date") or ""))
+    if m:
+        year = int(m.group(1))
+    desc = d.get("description")
+    if isinstance(desc, dict):
+        desc = desc.get("value")
+    lang = None
+    for l in d.get("languages") or []:
+        lang = _norm_lang(str(l.get("key", "")).rsplit("/", 1)[-1])
+        break
+    shown_isbn = (d.get("isbn_13") or [None])[0] or _isbn13(isbn) or isbn
+    return [{
+        "source_id": "openlibrary:" + str(d.get("key", "")).split("/")[-1],
+        "title": title,
+        "author": authors,
+        "year": year,
+        "isbn": shown_isbn,
+        "language": _language_from_isbn(shown_isbn) or lang,
+        "cover_url": _ol_cover(cover_id=(d.get("covers") or [None])[0], isbn=shown_isbn),
+        "description": (desc or "")[:2000] if isinstance(desc, str) or desc is None else "",
+    }]
 
 
 def _google_paged(query, language, want):
@@ -600,6 +703,8 @@ def search(query: str, languages=None, limit: int = 12, deep: bool = False):
             "google": pool.submit(_google, query, None, limit + 8),
             "openlibrary": pool.submit(_openlibrary, query, None, limit + 8),
         }
+        if _normalize_isbn(query):
+            futures["ol_edition"] = pool.submit(_openlibrary_edition, _normalize_isbn(query))
         for name, fut in futures.items():
             try:
                 combined += fut.result()
@@ -620,15 +725,20 @@ def search(query: str, languages=None, limit: int = 12, deep: bool = False):
 
     isbn = _normalize_isbn(query)
     if isbn:
-        # Exacte editie gevraagd: geen taalfilter, en de editie waarvan de ISBN
-        # exact klopt vooraan.
-        combined.sort(key=lambda c: (c.get("isbn") or "").replace("-", "") != isbn)
-        result = combined[:limit]
+        # Exacte editie gevraagd: geen taalfilter. Is de editie met precies deze
+        # ISBN gevonden, geef dan alléén die — de rest zijn andere edities/vertalingen
+        # van hetzelfde werk en dat is hier ruis.
+        want = _isbn13(isbn)
+        exact = [c for c in combined if want and _isbn13(c.get("isbn")) == want]
+        result = (exact or combined)[:limit]
     else:
         combined = _rank_by_relevance(combined, query)
         result = _apply_language_filter(combined, languages)[:limit]
 
-    _cache[cache_key] = (time.time(), result)
+    # Een gedeeltelijk resultaat (een bron viel weg) niet onthouden — anders blijft
+    # het een uur lang hangen terwijl de bron al lang weer werkt.
+    if not errors:
+        _cache[cache_key] = (time.time(), result)
     return result
 
 

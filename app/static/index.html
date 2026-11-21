@@ -495,6 +495,12 @@
       <label style="margin:0;"><input type="checkbox" id="lang_nl" value="nl"> Nederlands</label>
     </div>
     <div class="hint">Boeken en releases in andere talen worden weggefilterd bij het zoeken.</div>
+    <label style="margin-top:18px;">Google Books API-sleutel <span class="hint">(optioneel — voorkomt "te veel verzoeken" bij het zoeken)</span></label>
+    <div class="row2">
+      <input id="google_books_key" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen" style="flex:1;">
+      <button class="btn secondary small" type="button" onclick="testGoogle()">Sleutel testen</button>
+    </div>
+    <div class="hint" id="google_books_key_hint"></div>
 
     <h3 id="set-opds">Leesapps (OPDS)</h3>
     <div class="hint" style="margin-bottom:8px;">Voeg deze link toe in een leesapp (KOReader, Thorium, Moon+ Reader, Librera, Marvin…) om je bibliotheek te bladeren en boeken te downloaden over je wifi.</div>
@@ -1529,6 +1535,10 @@ async function loadSettings() {
   document.getElementById('zlib_email').value = '';
   document.getElementById('zlib_password').value = '';
   document.getElementById('annas_key').value = '';
+  document.getElementById('google_books_key').value = '';
+  document.getElementById('google_books_key_hint').textContent = s.google_books_key_set
+    ? '✓ opgeslagen (laat leeg om te behouden)'
+    : 'Zonder sleutel zoekt de app anoniem bij Google, met een lage limiet.';
   const active = (s.sources_enabled || []).map(x => SRC_LABELS[x] || x).join(' → ');
   const q = s.zlib_quota;
   const quotaTxt = q ? ` Vandaag gebruikt: <b>${q.used}/${q.limit}</b>${q.resets_in ? ` (reset over ${escapeHtml(q.resets_in)})` : ''}.` : '';
@@ -1569,6 +1579,7 @@ function settingsPayload() {
     zlib_email: document.getElementById('zlib_email').value.trim(),
     zlib_password: document.getElementById('zlib_password').value,
     annas_key: document.getElementById('annas_key').value.trim(),
+    google_books_key: document.getElementById('google_books_key').value.trim(),
   };
 }
 async function saveSettingsQuiet() {
@@ -1588,6 +1599,13 @@ async function testProwlarr() {
   const d = await res.json();
   showMsg(res.ok ? 'ok' : 'err', res.ok ? `Verbonden! Prowlarr ${d.version}` : d.detail);
   loadStatus();
+}
+async function testGoogle() {
+  await saveSettingsQuiet();
+  const res = await fetch('/api/settings/test-google', { method:'POST' });
+  const d = await res.json();
+  showMsg(res.ok ? 'ok' : 'err', res.ok ? (d.detail || 'Sleutel werkt.') : d.detail);
+  loadSettings();
 }
 async function testQbittorrent() {
   await saveSettingsQuiet();

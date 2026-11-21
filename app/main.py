@@ -72,6 +72,7 @@ class SettingsIn(BaseModel):
     zlib_email: str = ""
     zlib_password: str = ""
     annas_key: str = ""
+    google_books_key: str = ""
 
 
 class MonitoredIn(BaseModel):
@@ -125,13 +126,15 @@ def _clean_langs(value: str):
 def get_settings():
     s = db.get_all_settings()
     for k in ("qbittorrent_password", "prowlarr_api_key", "zlib_password",
-              "zlib_email", "annas_key", "zlib_session", "opds_password"):
+              "zlib_email", "annas_key", "zlib_session", "opds_password",
+              "google_books_key"):
         s.pop(k, None)
     s["qbittorrent_password_set"] = bool(db.get_setting("qbittorrent_password"))
     s["prowlarr_api_key_set"] = bool(db.get_setting("prowlarr_api_key"))
     s["zlib_password_set"] = bool(db.get_setting("zlib_password"))
     s["zlib_email_set"] = bool(db.get_setting("zlib_email"))
     s["annas_key_set"] = bool(db.get_setting("annas_key"))
+    s["google_books_key_set"] = bool(db.get_setting("google_books_key"))
     s["opds_password_set"] = bool(db.get_setting("opds_password"))
     s["opds_url"] = f"http://{_lan_ip()}:8686/opds"
     s["zlib_quota"] = services.zlib_quota()
@@ -180,6 +183,7 @@ def save_settings(payload: SettingsIn):
         ("zlib_email", payload.zlib_email),
         ("zlib_password", payload.zlib_password),
         ("annas_key", payload.annas_key),
+        ("google_books_key", payload.google_books_key.strip()),
     ):
         if val and val != _SECRET_PLACEHOLDER:
             db.set_setting(key, val)
@@ -207,6 +211,14 @@ def test_prowlarr():
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/settings/test-google")
+def test_google():
+    ok, msg = metadata.test_google_key()
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    return {"ok": True, "detail": msg}
 
 
 @app.post("/api/settings/test-qbittorrent")

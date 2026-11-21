@@ -169,6 +169,16 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   Uitkomst 30 dagen in `kv_cache` (ook de negatieve, als "").
 - Frontend: `coverSrc(o)` bouwt die URL; alle `<img>` gebruiken 'm + `loading="lazy"`.
 
+## Google Books-sleutel + exacte ISBN-zoekopdracht (v53)
+- Optionele instelling `google_books_key` (secret, Instellingen -> Bibliotheek & metadata,
+  knop "Sleutel testen" -> `POST /api/settings/test-google`). `metadata._google_get()` voegt hem toe;
+  wordt hij geweigerd (400/403) dan één keer anoniem opnieuw. Zonder sleutel gaf Google vaak 429 en
+  bleef alleen Open Library over.
+- ISBN-zoekopdracht: `_openlibrary_edition()` (api/books, `jscmd=details`) geeft de EXACTE editie i.p.v.
+  `search.json` (dat het werk met de titel van een willekeurige editie gaf, bv. de Spaanse). `search()`
+  geeft bij een ISBN alleen de edities met precies die ISBN terug (`_isbn13` zet ISBN-10 om).
+- `search()` onthoudt een resultaat niet meer in `_cache` als een bron faalde.
+
 ## Metadata-cache (v35)
 `metadata._disk_cached(prefix, key_parts, producer)` cachet de zware API-calls
 (`_google`, `_openlibrary`, `_ol_by_author`, `_ol_by_series`) een week lang in de

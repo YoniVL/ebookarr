@@ -16,7 +16,7 @@ BACKUP_DIR = DB_PATH.parent / "backups"
 # Instellingen die versleuteld opgeslagen worden (zie obfuscate.py)
 SECRET_KEYS = {"qbittorrent_password", "prowlarr_api_key",
                "zlib_password", "zlib_email", "annas_key", "zlib_session",
-               "opds_password"}
+               "opds_password", "google_books_key"}
 
 # Standaardwaarden voor nieuwe instellingen
 SETTING_DEFAULTS = {
@@ -40,6 +40,7 @@ SETTING_DEFAULTS = {
     "zlib_email": "",           # secret
     "zlib_password": "",        # secret
     "annas_key": "",            # secret; leeg = Anna's Archive uit
+    "google_books_key": "",     # secret; optionele Google Books API-sleutel (geen 429's meer)
     "zlib_session": "",         # secret; gecachete Z-Library-login (domein + cookies)
     "opds_user": "ebookarr",    # login voor de OPDS-catalogus
     "opds_password": "",        # secret; leeg = OPDS zonder login (alleen LAN)
