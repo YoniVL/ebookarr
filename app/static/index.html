@@ -1,327 +1,542 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="nl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>EbookArr</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E">
 <style>
-  :root {
-    /* ---- Nocturne-tokens — exact uit "EbookArr Herontwerp" ---- */
-    --font: -apple-system, "Segoe UI", Roboto, sans-serif;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+/* Bricolage Grotesque (variabel: gewicht 200–800 + optische maat) — SIL Open Font License 1.1, zie fonts/OFL-LICENSE.txt */
+@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-display:swap;font-weight:200 800;
+  src:url(/static/fonts/bricolage-grotesque-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-display:swap;font-weight:200 800;
+  src:url(/static/fonts/bricolage-grotesque-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 
-    --bg:#161826; --panel:#1f2231; --panel2:#191b28; --panel3:#262a3a;
-    --border:#2e3242; --border-strong:#3f424d;
+/* EbookArr · Kaft nacht — design tokens
+   Gebruik in componenten altijd deze variabelen, nooit losse hexwaarden. */
+:root{
+/* vlakken */
+--bg:#0B0D10;--surface:#14181E;--surface-2:#1E232B;--raised:#262C35;--line:#2C333D;--line-strong:#3A424E;
+/* tekst */
+--ink:#ECEFF3;--ink-2:#A9B2BD;--ink-3:#88929E;--ink-disabled:#5E6773;
+/* contrastvlak: actieve pil, inkt-knop, selectiebalk */
+--hi:#ECEFF3;--hi-hover:#D3D9E0;--hi-press:#BCC4CD;--on-hi:#0B0D10;
+/* accent */
+--accent:#FF7A45;--accent-hover:#FF9466;--accent-press:#E8622E;--accent-text:#FF8F61;--accent-soft:rgba(255,122,69,.14);--on-accent:#0B0D10;
+/* status: vlak + tekst */
+--wanted-bg:#232A33;--wanted-fg:#C9D1DA;
+--search-bg:#0E2A36;--search-fg:#5FD0F2;
+--dl-bg:#33270A;--dl-fg:#F7C35A;
+--done-bg:#0B2C20;--done-fg:#4BE3A2;
+--fail-bg:#3A1416;--fail-fg:#FF8080;
+/* overig */
+--scrim:rgba(5,6,8,.72);
+--focus:#ECEFF3;
+/* vorm */
+--r-xs:6px;--r-s:10px;--r-m:16px;--r-l:24px;--r-pill:999px;
+/* ruimte */
+--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+/* hoogtes */
+--h-sm:36px;--h-md:44px;--h-lg:64px;
+/* schaduw */
+--shadow-1:0 0 0 1px rgba(255,255,255,.05),0 2px 8px rgba(0,0,0,.45);
+--shadow-2:0 18px 40px -10px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.07);
+--shadow-3:0 32px 80px -16px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.08);
+/* typografie */
+--f-display:'Bricolage Grotesque',system-ui,'Segoe UI',sans-serif;
+--f-mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+--fs-xs:12px;--fs-sm:13px;--fs-md:15px;--fs-lg:17px;--fs-xl:24px;--fs-2xl:32px;--fs-3xl:56px;
+--fw-regular:400;--fw-medium:500;--fw-semibold:600;--fw-bold:700;--fw-black:800;
+/* beweging */
+--dur-fast:120ms;--dur:180ms;--ease:cubic-bezier(.2,.7,.2,1);
+}
 
-    --text:#e9e9ed; --muted:#9397ab; --faint:#6b6f80; --tag-tx:#c3c6d2;
-    --accent:#9184d9; --accent-hi:#b5abfc;
-    --accent-soft:rgba(145,132,217,.14); --accent-line:rgba(145,132,217,.45);
-    --accent-hover:rgba(145,132,217,.26);
+/* EbookArr · Kaft nacht — componenten
+   Vereist tokens.css en fonts.css. De .is-* klassen zijn alleen voor het componentenblad
+   en mogen in de app weg; :hover / :active / :focus-visible / [disabled] doen daar het werk. */
+/* ============ basis ============ */
+body{margin:0;background:var(--bg);color:var(--ink);font:var(--fw-regular) var(--fs-md)/1.45 var(--f-display);color-scheme:dark}
+a{color:var(--accent-text)}a:hover{color:var(--accent-hover)}
+*:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.is-focus{outline:3px solid var(--focus);outline-offset:3px}
+.h{font-weight:var(--fw-black);letter-spacing:-.03em}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* ============ knoppen ============ */
+.btn{display:inline-flex;align-items:center;gap:8px;height:var(--h-md);padding:0 18px;box-sizing:border-box;border-radius:var(--r-pill);border:0;background:var(--surface);color:var(--ink);font:var(--fw-semibold) var(--fs-md)/1 var(--f-display);cursor:pointer;white-space:nowrap;text-decoration:none;box-shadow:var(--shadow-1);transition:background var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease)}
+.btn:hover,.btn.is-hover{background:var(--surface-2);color:var(--ink)}
+.btn:active,.btn.is-active{background:var(--raised);transform:scale(.97)}
+.btn[disabled],.btn.is-disabled{background:var(--surface-2);color:var(--ink-disabled);box-shadow:none;cursor:not-allowed;transform:none}
+.btn-ink{background:var(--hi);color:var(--on-hi)}
+.btn-ink:hover,.btn-ink.is-hover{background:var(--hi-hover);color:var(--on-hi)}
+.btn-ink:active,.btn-ink.is-active{background:var(--hi-press)}
+.btn-acc{background:var(--accent);color:var(--on-accent)}
+.btn-acc:hover,.btn-acc.is-hover{background:var(--accent-hover);color:var(--on-accent)}
+.btn-acc:active,.btn-acc.is-active{background:var(--accent-press)}
+.btn-flat{background:transparent;box-shadow:none;color:var(--ink-2)}
+.btn-flat:hover,.btn-flat.is-hover{background:var(--surface-2);color:var(--ink)}
+.btn-flat:active,.btn-flat.is-active{background:var(--raised)}
+.btn-flat[disabled],.btn-flat.is-disabled{background:transparent}
+.btn-danger{background:var(--fail-bg);color:var(--fail-fg);box-shadow:none}
+.btn-danger:hover,.btn-danger.is-hover{background:var(--fail-fg);color:var(--on-hi)}
+.btn-danger:active,.btn-danger.is-active{background:#E86A6A;color:var(--on-hi)}
+.btn-sm{height:var(--h-sm);padding:0 14px;font-size:14px}
+.btn-lg{height:var(--h-lg);padding:0 26px;font-size:16px}
+/* icoonknop */
+.ib{width:40px;height:40px;display:inline-grid;place-items:center;border-radius:50%;border:0;background:var(--surface);color:var(--ink-2);cursor:pointer;padding:0;box-shadow:var(--shadow-1);transition:background var(--dur-fast) var(--ease)}
+.ib:hover,.ib.is-hover{background:var(--hi);color:var(--on-hi)}
+.ib:active,.ib.is-active{background:var(--hi-press);color:var(--on-hi)}
+.ib[disabled],.ib.is-disabled{background:var(--surface-2);color:var(--ink-disabled);box-shadow:none;cursor:not-allowed}
+.ib-on{background:var(--accent);color:var(--on-accent)}
+.ib-on .i{fill:var(--on-accent)}
+.ib-on:hover,.ib-on.is-hover{background:var(--accent-hover);color:var(--on-accent)}
+.ib-danger:hover,.ib-danger.is-hover{background:var(--fail-fg);color:var(--on-hi)}
+/* ============ navigatie & filters ============ */
+.pill{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:var(--r-pill);border:0;background:transparent;color:var(--ink-2);text-decoration:none;font:var(--fw-semibold) var(--fs-md)/1 var(--f-display);cursor:pointer}
+.pill:hover,.pill.is-hover{background:var(--surface-2);color:var(--ink)}
+.pill-on,.pill-on:hover{background:var(--hi);color:var(--on-hi)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:var(--h-sm);padding:0 14px;border-radius:var(--r-pill);border:0;background:var(--surface);color:var(--ink-2);font:var(--fw-semibold) 14px/1 var(--f-display);cursor:pointer;box-shadow:var(--shadow-1)}
+.chip:hover,.chip.is-hover{color:var(--ink);background:var(--surface-2)}
+.chip b{font-weight:var(--fw-black);color:var(--ink)}
+.chip-on,.chip-on:hover{background:var(--hi);color:var(--on-hi)}
+.chip-on b{color:var(--on-hi)}
+/* ============ labels ============ */
+.stk{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:var(--r-pill);font:var(--fw-bold) var(--fs-xs)/1 var(--f-display);white-space:nowrap}
+.stk--wanted{background:var(--wanted-bg);color:var(--wanted-fg)}
+.stk--search{background:var(--search-bg);color:var(--search-fg)}
+.stk--dl{background:var(--dl-bg);color:var(--dl-fg)}
+.stk--done{background:var(--done-bg);color:var(--done-fg)}
+.stk--fail{background:var(--fail-bg);color:var(--fail-fg)}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--r-xs);background:var(--surface-2);font:var(--fw-bold) 11px/1 var(--f-display);letter-spacing:.03em;color:var(--ink-2)}
+.tag--series{background:var(--accent-soft);color:var(--accent-text)}
+.tag--outline{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+.pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.4}}
+/* ============ velden ============ */
+.field{height:48px;box-sizing:border-box;border:2px solid transparent;background:var(--surface-2);border-radius:var(--r-s);padding:0 16px;font:var(--fw-medium) var(--fs-md) var(--f-display);color:var(--ink);width:100%;box-shadow:var(--shadow-1)}
+.field:hover,.field.is-hover{border-color:var(--line-strong)}
+.field:focus,.field.is-focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.field.is-error{border-color:var(--fail-fg)}
+.field[disabled],.field.is-disabled{background:var(--surface);color:var(--ink-disabled);box-shadow:none;cursor:not-allowed}
+.field::placeholder{color:var(--ink-3)}
+select.field{color-scheme:dark}
+.toggle{width:48px;height:28px;border-radius:14px;background:var(--line);position:relative;flex:none;border:0;padding:0;cursor:pointer;transition:background var(--dur) var(--ease)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--ink);transition:left var(--dur) var(--ease)}
+.toggle:hover,.toggle.is-hover{background:var(--line-strong)}
+.toggle-on,.toggle-on:hover{background:var(--accent)}
+.toggle-on::after{left:23px;background:var(--on-accent)}
+.toggle[disabled],.toggle.is-disabled{opacity:.4;cursor:not-allowed}
+.cbx{width:22px;height:22px;box-sizing:border-box;border-radius:var(--r-xs);border:2px solid var(--line-strong);background:var(--surface);display:inline-grid;place-items:center;flex:none;color:var(--on-accent);cursor:pointer}
+.cbx:hover,.cbx.is-hover{border-color:var(--ink-3)}
+.cbx-on{background:var(--accent);border-color:var(--accent)}
+.cbx[aria-disabled="true"],.cbx.is-disabled{opacity:.4;cursor:not-allowed}
+/* ============ boekkaart ============ */
+.card{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cov{position:relative;border-radius:var(--r-s);transition:transform var(--dur) var(--ease)}
+.cov:hover,.cov.is-hover{transform:translateY(-3px)}
+.cov.is-selected{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--accent)}
+.bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.bar>span{display:block;height:100%;border-radius:4px;background:var(--accent)}
+/* ============ toegankelijkheid ============ */
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}*{transition:none!important}.btn:active,.cov:hover{transform:none}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* ============ acties op de cover ============ */
+.acts{position:absolute;left:8px;right:8px;bottom:8px;display:flex;justify-content:space-between;padding:6px;background:rgba(11,13,16,.88);border-radius:var(--r-pill);opacity:0;transform:translateY(4px);transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease)}
+.acts .ib{width:32px;height:32px;box-shadow:none}
+.card:hover .acts,.card:focus-within .acts{opacity:1;transform:none}
+.cov .stk{position:absolute;left:10px;top:10px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.cov>.ib{position:absolute;right:8px;top:8px;width:32px;height:32px}
+.cov>.bar{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(0,0,0,.55)}
+.nocover{aspect-ratio:2/3;box-sizing:border-box;border-radius:var(--r-s);background:var(--surface-2);box-shadow:inset 0 0 0 1.5px var(--line);padding:10%;display:flex;flex-direction:column;justify-content:flex-end;gap:10px}
+.nocover b{font:800 40px/.9 var(--f-display);letter-spacing:-.03em;color:var(--accent)}
+.nocover span{font:600 13px/1.15 var(--f-display);color:var(--ink)}
+.cov img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:var(--r-s)}
 
-    --ok:#5cb98c;     --ok-soft:rgba(92,185,140,.14);   --ok-line:rgba(92,185,140,.32);   --ok-tx:#8ed4ad;
-    --warn:#d8a94a;   --warn-soft:rgba(216,169,74,.14); --warn-line:rgba(216,169,74,.32); --warn-tx:#e6c481;
-    --danger:#d9695f; --danger-soft:rgba(217,105,95,.14);--danger-line:rgba(217,105,95,.45);--danger-tx:#eda199;
-    --info:#6b9fdd;   --info-soft:rgba(107,159,221,.14);--info-line:rgba(107,159,221,.32);--info-tx:#a3c5ee;
+/* ============ EbookArr — app-specifieke stijl (bovenop tokens + componenten) ============ */
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:border-box}
+body{min-height:100vh}
+button{font-family:inherit}
+.i{display:inline-block;vertical-align:middle}
+.grow{flex:1}
+.ink-3{color:var(--ink-3)}
+@keyframes rise{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dialog,.overlay,.panel.active,.note{animation:none!important}html{scroll-behavior:auto}}
 
-    --r-sm:4px; --r-md:8px; --r-lg:14px;
-    --sh-1:0 0 0 1px var(--border);
-    --sh-2:0 0 0 1px var(--border-strong), 0 6px 18px rgba(0,0,0,.55);
-    --sh-3:0 0 0 1px var(--border-strong), 0 24px 60px rgba(0,0,0,.65);
-    --cover-grad:linear-gradient(160deg,#2b2f42,#1b1e2b);
-  }
-  * { box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
-  body { background:var(--bg); color:var(--text); font-family:var(--font);
-         font-size:14px; line-height:1.55; margin:0; -webkit-font-smoothing:antialiased; }
-  .meta { color:var(--muted); font:400 13px/1.5 var(--font); }
+/* ---------- kop ---------- */
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:20px 40px;max-width:1360px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.brand:hover{color:var(--ink)}
+.brand .logo{width:40px;height:40px;border-radius:12px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center}
+.brand .h{font-size:24px}
+.mainnav{display:flex;gap:4px;padding:4px;background:var(--surface);border-radius:var(--r-pill);box-shadow:var(--shadow-1)}
+.pill b{font-weight:var(--fw-black);font-size:12px;min-width:20px;height:20px;padding:0 6px;border-radius:10px;display:inline-grid;place-items:center;background:var(--accent);color:var(--on-accent)}
+.pill .dot{margin-left:-2px}
+.health{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;min-height:32px}
+.hchip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border-radius:var(--r-pill);background:var(--surface);color:var(--ink-2);font:var(--fw-semibold) 13px/1 var(--f-display);box-shadow:var(--shadow-1);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+.hchip .hdot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--done-fg);box-shadow:0 0 0 3px var(--done-bg)}
+.hchip.is-warn{background:var(--dl-bg);color:var(--dl-fg);box-shadow:none}
+.hchip.is-warn .hdot{background:var(--dl-fg);box-shadow:0 0 0 3px rgba(247,195,90,.18)}
+.hchip.is-err{background:var(--fail-bg);color:var(--fail-fg);box-shadow:none}
+.hchip.is-err .hdot{background:var(--fail-fg);box-shadow:0 0 0 3px rgba(255,128,128,.18)}
+.hchip.is-search{background:var(--search-bg);color:var(--search-fg);box-shadow:none}
+.hchip.is-search .hdot{background:var(--search-fg);box-shadow:none;width:7px;height:7px}
 
-  .ic { display:inline-block; vertical-align:-.15em; flex:none; }
-  .btn .ic, button.icon .ic { vertical-align:middle; }
+main{max-width:1360px;margin:0 auto;padding:12px 40px 120px}
+.panel{display:none}
+.panel.active{display:block;animation:fade .16s ease}
+.ptitle{font:var(--fw-black) clamp(36px,5vw,var(--fs-3xl))/1.02 var(--f-display);letter-spacing:-.03em;margin:8px 0 10px}
+.lead{color:var(--ink-2);max-width:760px;margin:0 0 28px;font-size:var(--fs-md)}
+.sect{display:flex;align-items:center;gap:12px;font:var(--fw-black) var(--fs-xl)/1.1 var(--f-display);letter-spacing:-.03em;margin:44px 0 16px}
+.sect:first-of-type{margin-top:8px}
+.sect .i{color:var(--ink-3)}
+.sect small{font:var(--fw-semibold) 14px var(--f-display);color:var(--ink-3);letter-spacing:0}
+.hint{font-size:13px;color:var(--ink-3);margin-top:6px;line-height:1.45}
+.hint .i{width:14px;height:14px;margin-right:4px;margin-top:-2px}
+.hint.ok{color:var(--done-fg)}
+.hint.bad{color:var(--dl-fg)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--surface-2);padding:2px 6px;border-radius:var(--r-xs);color:var(--ink-2)}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent-text);font:inherit;font-weight:var(--fw-bold);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.linkbtn:hover{color:var(--accent-hover)}
+.ib-flat{background:transparent;box-shadow:none}
+.ib-flat:hover{background:var(--surface-2);color:var(--ink)}
+.ib-sm{width:32px;height:32px}
+.ib-sm .i{width:16px;height:16px}
 
-  @keyframes ebPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.25; transform:scale(.65); } }
-  @keyframes ebFade  { from { opacity:0; } to { opacity:1; } }
-  @keyframes ebRise  { from { opacity:0; transform:translateY(6px) scale(.985); } to { opacity:1; transform:none; } }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
-  }
+/* ---------- meldingen ---------- */
+.note{display:flex;align-items:center;gap:12px;padding:12px 16px 12px 18px;border-radius:var(--r-m);margin:0 0 16px;font:var(--fw-semibold) var(--fs-sm)/1.4 var(--f-display);animation:fade .18s ease}
+.note>span{flex:1;min-width:0;overflow-wrap:anywhere}
+.note .i{flex:none}
+.note--done{background:var(--done-bg);color:var(--done-fg)}
+.note--search{background:var(--search-bg);color:var(--search-fg)}
+.note--dl{background:var(--dl-bg);color:var(--dl-fg)}
+.note--fail{background:var(--fail-bg);color:var(--fail-fg)}
+.note .ib{width:32px;height:32px;color:inherit}
 
-  a { color:var(--accent-hi); text-decoration:none; text-underline-offset:3px; }
-  a:hover { text-decoration:underline; }
-  code { font-family:var(--mono); font-size:.86em; background:var(--panel3);
-         color:var(--muted); padding:1px 5px; border-radius:var(--r-sm); }
-  ::selection { background:var(--accent-soft); }
-  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+/* ---------- toevoegen ---------- */
+.addblock{display:flex;flex-direction:column;gap:14px;margin:8px 0 30px}
+.addbar{display:flex;gap:12px;align-items:center}
+.addfield{position:relative;flex:1;min-width:0}
+.addfield>.i{position:absolute;left:22px;top:50%;transform:translateY(-50%);color:var(--ink-3);width:24px;height:24px;pointer-events:none}
+.addfield input.field{height:var(--h-lg);border-radius:var(--r-pill);padding:0 26px 0 60px;font-size:18px}
+.suggest{position:absolute;left:0;right:0;top:calc(100% + 10px);z-index:30;background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow-3);max-height:min(520px,70vh);overflow:auto;padding:8px}
+.opt{display:flex;gap:14px;align-items:center;padding:8px 12px;border-radius:var(--r-m);cursor:pointer;min-height:64px}
+.opt:hover,.opt[aria-selected="true"]{background:var(--raised)}
+.opt.is-listed{cursor:default;opacity:.8}
+.opt .oc{width:40px;flex:none}
+.opt .oc img,.opt .oc .nocover{width:40px;border-radius:var(--r-xs)}
+.opt .ot{min-width:0;flex:1}
+.opt .ot b{display:block;font-weight:var(--fw-bold);font-size:var(--fs-md);line-height:1.2}
+.opt .ot span{display:block;font-size:13px;color:var(--ink-2);margin-top:2px}
+.opt .ob{flex:none;font-size:13px;font-weight:var(--fw-bold);color:var(--ink-3)}
+.opt .ob.acc{color:var(--accent-text)}
+.optnote{padding:16px;color:var(--ink-2);font-size:14px}
+.optfoot{display:flex;gap:8px;padding:8px 8px 4px;border-top:1px solid var(--line);margin-top:6px;flex-wrap:wrap}
+.manual{display:flex;gap:10px;flex-wrap:wrap;padding:14px;background:var(--surface);border-radius:var(--r-m);box-shadow:var(--shadow-1)}
+.manual .field{flex:1;min-width:200px}
+.actionrow{display:flex;gap:8px;flex-wrap:wrap}
 
-  /* ---- kop ---- */
-  header { background:var(--panel); border-bottom:1px solid var(--border); padding:18px 30px 0; }
-  .hbar { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; }
-  .brand { display:flex; align-items:center; gap:11px; font:600 24px/1.2 var(--font); letter-spacing:-.01em; }
-  .brand .logo { width:34px; height:34px; flex:none; border-radius:var(--r-md);
-                 background:var(--accent-soft); border:1px solid var(--accent-line); color:var(--accent-hi);
-                 display:flex; align-items:center; justify-content:center; }
-  .health { display:flex; align-items:center; gap:14px; row-gap:5px; flex-wrap:wrap; justify-content:flex-end;
-            font:400 12px/1 var(--font); color:var(--muted); padding-top:5px; }
-  .health > span { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
-  .health .hl-err { color:var(--danger-tx); }
-  .health .mono { font-family:var(--mono); }
-  .dot { display:inline-block; width:8px; height:8px; border-radius:999px; background:var(--faint); flex:none; }
-  .dot.ok { background:var(--ok); box-shadow:0 0 0 3px var(--ok-soft); }
-  .dot.err { background:var(--danger); box-shadow:0 0 0 3px var(--danger-soft); }
-  .dot.warn { background:var(--warn); box-shadow:0 0 0 3px var(--warn-soft); }
+/* ---------- filters ---------- */
+.filterrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 8px;margin-bottom:24px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.field.sm{height:var(--h-sm);padding:0 16px;border-radius:var(--r-pill);font-size:14px;width:auto}
+input.field.sm{width:200px}
+select.field.sm{padding-right:10px}
+.seg{display:inline-flex;gap:2px;padding:3px;background:var(--surface);border-radius:var(--r-pill);box-shadow:var(--shadow-1)}
+.seg .ib{width:30px;height:30px;box-shadow:none;background:transparent}
+.seg .ib[aria-pressed="true"]{background:var(--hi);color:var(--on-hi)}
+.seg .ib .i{width:16px;height:16px}
+.btn[aria-pressed="true"]{background:var(--hi);color:var(--on-hi)}
 
-  nav { display:flex; gap:4px; margin-top:14px; flex-wrap:wrap; }
-  nav button { background:none; border:0; color:var(--muted); padding:11px 14px; cursor:pointer;
-               font:500 14px/1 var(--font); border-radius:var(--r-md) var(--r-md) 0 0; }
-  nav button:hover { color:var(--text); background:var(--panel3); }
-  nav button.active { color:var(--text); box-shadow:inset 0 -2px 0 var(--accent); background:none; }
-  .tabdot { display:inline-block; width:6px; height:6px; border-radius:999px; background:var(--ok);
-            box-shadow:0 0 0 3px var(--ok-soft); margin-left:5px; vertical-align:middle; }
+/* ---------- boekenraster ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:32px 24px}
+.card .cov{background:var(--surface-2);box-shadow:var(--shadow-2)}
+.card .cov.is-pick{cursor:pointer}
+.ctitle{font:var(--fw-bold) var(--fs-lg)/1.2 var(--f-display);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.cby{font-size:14px;color:var(--ink-2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tag.tagbtn{cursor:pointer;border:0;font-family:var(--f-display)}
+.tag.tagbtn:hover{color:var(--ink);background:var(--surface-2)}
+.tag--free{background:var(--done-bg);color:var(--done-fg)}
+.tag--acct{background:var(--search-bg);color:var(--search-fg)}
+.tag--conv{background:var(--dl-bg);color:var(--dl-fg);gap:4px}
+.tag--conv .i{width:11px;height:11px;stroke-width:2.4}
+.cstatus{font:var(--fw-semibold) 13px/1.35 var(--f-display);color:var(--ink-3)}
+.cstatus.is-search{color:var(--search-fg)}
+.cstatus.is-search .dot{width:6px;height:6px;background:var(--search-fg);margin-right:6px;vertical-align:1px}
+.cstatus.is-dl{color:var(--dl-fg)}
+.cstatus.is-done{color:var(--done-fg)}
+.cstatus.is-acc{color:var(--accent-text)}
+.cstatus.is-fail{color:var(--fail-fg)}
+.cstatus .i{width:14px;height:14px;margin-right:4px;margin-top:-2px}
+.cstatus.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cov>.cbx{position:absolute;right:10px;top:10px;width:28px;height:28px;border-radius:50%;background:rgba(11,13,16,.7);border-color:var(--ink-2)}
+.cov>.cbx.cbx-on{background:var(--accent);border-color:var(--accent)}
+.cov .tick{display:none}
+.cov .stk.stk--dl .dot{margin-right:0}
+.nocover.sm{padding:0;justify-content:center;align-items:center;aspect-ratio:2/3;gap:0}
+.nocover.sm b{font-size:15px}
 
-  main { padding:26px 30px 60px; max-width:1000px; margin:0 auto; }
-  .panel { display:none; } .panel.active { display:block; animation:ebFade .14s ease; }
+/* lijstweergave */
+.grid.rows{display:flex;flex-direction:column;gap:10px}
+.rows .card{flex-direction:row;align-items:center;gap:20px;padding:12px 16px 12px 12px;background:var(--surface);border-radius:var(--r-m);box-shadow:var(--shadow-1)}
+.rows .card:hover{background:var(--surface-2)}
+.rows .cov{width:56px;flex:none;box-shadow:var(--shadow-1);border-radius:var(--r-xs)}
+.rows .cov:hover{transform:none}
+.rows .cov img,.rows .cov .nocover{border-radius:var(--r-xs)}
+.rows .rinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.rows .rmid{width:260px;flex:none;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.rows .rowacts{display:flex;gap:6px;flex:none;align-items:center}
+.rows .rowacts .ib{width:36px;height:36px;box-shadow:none;background:var(--surface-2)}
+.rows .rowacts .ib:hover{background:var(--hi);color:var(--on-hi)}
+.rows .rowacts .ib-on{background:var(--accent);color:var(--on-accent)}
+.rows .rowacts .ib-danger:hover{background:var(--fail-fg)}
+.rows .rowcbx{flex:none}
+@media (max-width:900px){.rows .card{flex-wrap:wrap}.rows .rmid{width:auto}}
 
-  /* ---- knoppen (soft-fill) ---- */
-  button.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
-    min-height:34px; padding:0 14px; border-radius:var(--r-md); cursor:pointer;
-    font:500 13px/1 var(--font); border:1px solid var(--accent-line); background:var(--accent-soft);
-    color:var(--accent-hi); transition:background .12s, border-color .12s, color .12s; }
-  button.btn:hover { background:var(--accent-hover); border-color:var(--accent); color:#d2cefd; }
-  button.btn:active { transform:translateY(1px); }
-  button.btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
-  button.btn.secondary { background:var(--panel3); border-color:var(--border); color:var(--text); }
-  button.btn.secondary:hover { background:#31364a; border-color:var(--border-strong); color:#fff; }
-  button.btn.danger { background:var(--danger-soft); border-color:var(--danger-line); color:var(--danger-tx); }
-  button.btn.danger:hover { background:rgba(217,105,95,.26); border-color:var(--danger); color:#f5c4be; }
-  button.btn.small { min-height:28px; padding:0 10px; font-size:12px; gap:5px; }
-  button.btn.secondary.active { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-hi); }
+/* selectiebalk + opslaan-balk (zwevend) */
+.floatbar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;padding:10px 10px 10px 22px;background:var(--hi);color:var(--on-hi);border-radius:var(--r-pill);box-shadow:var(--shadow-3);max-width:calc(100vw - 32px);flex-wrap:wrap;justify-content:center}
+.floatbar b{font-weight:var(--fw-black)}
+.floatbar .btn{background:rgba(11,13,16,.1);color:var(--on-hi);box-shadow:none;height:40px}
+.floatbar .btn:hover{background:rgba(11,13,16,.2);color:var(--on-hi)}
+.floatbar .btn-acc{background:var(--accent);color:var(--on-accent)}
+.floatbar .btn-acc:hover{background:var(--accent-hover)}
+.floatbar .btn-danger{background:var(--fail-bg);color:var(--fail-fg)}
+.floatbar .btn-danger:hover{background:var(--fail-fg);color:var(--on-hi)}
+#savebar{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(24px);transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease)}
+#savebar.show{opacity:1;pointer-events:auto;transform:translateX(-50%)}
+#savebar .sv{display:flex;align-items:center;gap:8px;font-weight:var(--fw-semibold);font-size:14px}
+#settings-msg .note{margin:0;padding:6px 12px;background:rgba(11,13,16,.08);color:var(--on-hi);font-size:13px}
 
-  button.icon { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
-    flex:none; padding:0; background:transparent; border:1px solid var(--border); color:var(--muted);
-    border-radius:var(--r-md); cursor:pointer; transition:background .12s, border-color .12s, color .12s; }
-  button.icon:hover { background:var(--panel3); color:var(--text); border-color:var(--border-strong); }
-  button.icon:active { transform:translateY(1px); }
-  button.icon.on { background:var(--warn-soft); border-color:var(--warn-line); color:var(--warn); }
-  button.icon.danger:hover { background:var(--danger-soft); border-color:var(--danger-line); color:var(--danger-tx); }
+/* ---------- leeg / laden ---------- */
+.empty{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:56px 24px;border-radius:var(--r-l);box-shadow:inset 0 0 0 2px var(--line);color:var(--ink-2);font-weight:var(--fw-medium)}
+.empty .i{width:32px;height:32px;color:var(--ink-3)}
+.empty.sm{padding:28px 16px;box-shadow:none}
+.loading{display:flex;align-items:center;gap:12px;color:var(--ink-2);padding:24px 4px}
+.loading .dot{background:var(--search-fg)}
 
-  /* ---- velden ---- */
-  input, select, textarea { background:var(--panel2); border:1px solid var(--border);
-    color:var(--text); padding:9px 12px; border-radius:var(--r-sm); font:400 14px/1.4 var(--font);
-    min-height:38px; caret-color:var(--accent); }
-  input::placeholder, textarea::placeholder { color:var(--faint); }
-  input:hover, select:hover, textarea:hover { border-color:var(--border-strong); }
-  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent);
-    box-shadow:0 0 0 3px rgba(145,132,217,.18); }
-  input[type=checkbox] { min-height:0; width:17px; height:17px; accent-color:var(--accent); }
-  input[type=number] { min-height:38px; }
+/* ---------- dialogen ---------- */
+.overlay{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;padding:24px;z-index:100;animation:fade .15s ease}
+.dialog{background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow-3);width:min(520px,100%);max-height:min(88vh,860px);display:flex;flex-direction:column;padding:28px;animation:rise .16s ease;gap:16px}
+.dialog.wide{width:min(760px,100%)}
+.dialog h2{font:var(--fw-black) var(--fs-xl)/1.1 var(--f-display);letter-spacing:-.03em;margin:0}
+.dialog p{margin:0;color:var(--ink-2)}
+.dhead{display:flex;align-items:flex-start;gap:16px}
+.dhead .grow{min-width:0}
+.dscroll{overflow:auto;margin:0 -28px;padding:0 28px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);min-height:120px}
+.dfoot{display:flex;gap:8px;justify-content:flex-end}
+.pickhead{display:flex;gap:16px;align-items:center;min-width:0}
+.pickhead .pcov{width:52px;flex:none}
+.pickhead .pcov img,.pickhead .pcov .nocover{width:52px;border-radius:var(--r-xs)}
+.pickhead small{display:block;color:var(--ink-2);font-size:14px;margin-top:4px}
+.rel{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
+.rel:last-child{border-bottom:0}
+.rel.dim{opacity:.7}
+.rel .rb{flex:1;min-width:0}
+.rel .rt{font-weight:var(--fw-semibold);overflow-wrap:anywhere;line-height:1.3}
+.rel .rm{font-size:13px;color:var(--ink-2);margin-top:4px}
+.rel .rw{font-size:13px;color:var(--fail-fg);font-weight:var(--fw-semibold);margin-top:4px}
+.rel .tags{margin-top:6px}
+.fileitem{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+.fileitem:last-child{border-bottom:0}
+.fileitem>.i{color:var(--ink-3)}
+.fileitem .fb{flex:1;min-width:0}
+.fileitem .fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.fileitem .fm{font-size:12px;color:var(--ink-3);margin-top:2px}
+.crow{display:flex;align-items:flex-start;gap:12px;font:var(--fw-medium) var(--fs-md)/1.4 var(--f-display);color:var(--ink);cursor:pointer;margin:0}
+.crow>input{margin-top:1px}
 
-  /* ---- kaarten ---- */
-  .card { background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg);
-          padding:16px; margin-bottom:12px; display:flex; gap:16px; align-items:flex-start;
-          transition:background .12s, border-color .12s; }
-  .card:hover { background:#23273a; border-color:var(--border-strong); }
-  .card .cover { width:64px; height:96px; flex:none; border-radius:var(--r-sm); object-fit:cover;
-                 background:var(--cover-grad); border:1px solid var(--border); }
-  .card .body { flex:1; min-width:0; }
-  .card .title { font:600 17px/1.3 var(--font); letter-spacing:-.01em; }
-  .card .title .yr { color:var(--muted); font-weight:400; }
-  .card .meta { color:var(--muted); font:400 13px/1.5 var(--font); margin-top:7px;
-                display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .card .meta .sep { color:var(--border-strong); }
-  .card .actions { display:flex; align-items:center; gap:6px; flex:none; flex-wrap:wrap; justify-content:flex-end; }
-  .card.selected { border-color:var(--accent-line); box-shadow:inset 0 0 0 1px var(--accent-line); }
-  .card .selbox { align-self:center; }
-  .card.compact { padding:14px; align-items:center; }
-  .card.compact .cover { width:44px; height:66px; }
-  .card.compact .meta { margin-top:4px; }
+/* checkbox + schakelaar (gewone <input>'s, zodat de logica blijft werken) */
+input[type=checkbox]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:var(--r-xs);border:2px solid var(--line-strong);background:var(--surface);display:inline-block;flex:none;margin:0;cursor:pointer;vertical-align:middle;position:relative;transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
+input[type=checkbox]:hover{border-color:var(--ink-3)}
+input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+input[type=checkbox]:checked::after{content:'';position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid var(--on-accent);border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+input[type=checkbox].sw{width:48px;height:28px;border-radius:14px;border:0;background:var(--line)}
+input[type=checkbox].sw:hover{background:var(--line-strong)}
+input[type=checkbox].sw::after{content:'';position:absolute;left:3px;top:3px;width:22px;height:22px;border:0;border-radius:50%;background:var(--ink);transform:none;transition:left var(--dur) var(--ease)}
+input[type=checkbox].sw:checked{background:var(--accent)}
+input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-accent);border:0;width:22px;height:22px}
 
-  /* ---- pills / tags / badges ---- */
-  .pill { display:inline-block; vertical-align:middle; font:600 11px/1.3 var(--font);
-          letter-spacing:.04em; text-transform:uppercase; padding:4px 10px; border-radius:999px;
-          background:var(--panel3); border:1px solid var(--border-strong); color:var(--tag-tx); }
-  .pill.searching   { background:var(--info-soft);   border-color:var(--info-line);   color:var(--info-tx); }
-  .pill.downloading { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-hi); }
-  .pill.downloaded  { background:var(--ok-soft);     border-color:var(--ok-line);     color:var(--ok-tx); }
-  .pill.failed      { background:var(--danger-soft); border-color:rgba(217,105,95,.32); color:var(--danger-tx); }
+/* ---------- activity ---------- */
+.actgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.actcard{display:flex;gap:16px;padding:16px;background:var(--surface);border-radius:var(--r-m);box-shadow:var(--shadow-1);align-items:center;min-width:0}
+.actcard .ac{width:56px;flex:none}
+.actcard .ac img,.actcard .ac .nocover{width:56px;border-radius:var(--r-xs)}
+.actcard .ab{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.actcard .at{font-weight:var(--fw-bold);font-size:var(--fs-lg);line-height:1.2;overflow-wrap:anywhere}
+.actcard .at span{font-weight:var(--fw-regular);color:var(--ink-2);font-size:14px}
+.recent{background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow-1);overflow:hidden}
+.rec{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.rec:last-child{border-bottom:0}
+.rec .rico{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none}
+.rec .rico .i{width:18px;height:18px}
+.rec .rb{flex:1;min-width:0}
+.rec .rt{font-weight:var(--fw-semibold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rec .rd{font-size:13px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rec .rw{font-size:13px;color:var(--ink-3);white-space:nowrap}
+.rec.k-dl .rico{background:var(--search-bg);color:var(--search-fg)}
+.rec.k-done .rico{background:var(--done-bg);color:var(--done-fg)}
+.rec.k-fail .rico{background:var(--fail-bg);color:var(--fail-fg)}
+.rec.k-other .rico{background:var(--surface-2);color:var(--ink-2)}
 
-  .langtag { display:inline-block; vertical-align:middle; min-width:24px; text-align:center;
-             background:var(--panel3); border:1px solid var(--border-strong); border-radius:var(--r-sm);
-             padding:2px 6px; font:600 11px/1.3 var(--font); color:var(--tag-tx); }
+/* ---------- volgen ---------- */
+.followform{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.followform .field{width:auto;flex:1;min-width:180px}
+.followform select.field{flex:none;min-width:130px}
+.fchip{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 6px 0 16px;border-radius:var(--r-pill);background:var(--surface);box-shadow:var(--shadow-1);font-weight:var(--fw-semibold);color:var(--ink)}
+.fchip .i{color:var(--ink-3)}
+.fchip small{font-weight:var(--fw-regular);color:var(--ink-3);font-size:13px}
+.fchip .ib{width:32px;height:32px;box-shadow:none;background:transparent}
+.fchip .ib:hover{background:var(--fail-fg);color:var(--on-hi)}
+.sugtools{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:20px}
+.sugtools .crow{font-size:14px;color:var(--ink-2)}
+.group{background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow-1);margin-bottom:20px;overflow:hidden}
+.ghead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 20px}
+.gtoggle{display:flex;align-items:center;gap:12px;background:none;border:0;color:var(--ink);font:var(--fw-black) 20px/1.1 var(--f-display);letter-spacing:-.02em;cursor:pointer;padding:6px 8px 6px 0;border-radius:var(--r-s);text-align:left}
+.gtoggle small{font:var(--fw-semibold) 14px var(--f-display);color:var(--ink-3);letter-spacing:0}
+.gactions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.gbody{padding:4px 20px 24px}
+.sugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:24px 20px}
+.sugrid .card .cov{box-shadow:var(--shadow-1)}
+.sugrid .ctitle{font-size:15px}
+.sugrid .sbtns{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:24px;color:var(--ink-2);font-size:14px}
 
-  .seriestag { display:inline-block; vertical-align:middle; font:500 11px/1.3 var(--font);
-               padding:4px 10px; border-radius:999px; background:var(--accent-soft);
-               border:1px solid var(--accent-line); color:var(--accent-hi); }
-  .langtoggle { font:500 11px/1.3 var(--font); border:1px solid var(--border); background:var(--panel2);
-                color:var(--muted); border-radius:999px; padding:4px 10px; cursor:pointer; min-height:0; }
-  .langtoggle:hover { color:var(--text); border-color:var(--border-strong); }
+/* ---------- instellingen ---------- */
+.subnav{position:sticky;top:12px;z-index:20;display:flex;flex-wrap:wrap;gap:2px;padding:4px;background:var(--surface);border-radius:var(--r-pill);box-shadow:var(--shadow-2);width:max-content;max-width:100%;margin:0 0 28px}
+.subnav a{height:36px;display:inline-flex;align-items:center;padding:0 16px;border-radius:var(--r-pill);color:var(--ink-2);text-decoration:none;font:var(--fw-semibold) 14px/1 var(--f-display)}
+.subnav a:hover{background:var(--surface-2);color:var(--ink)}
+.subnav a.spy{background:var(--hi);color:var(--on-hi)}
+.setcard{background:var(--surface);border-radius:var(--r-l);padding:32px;box-shadow:var(--shadow-1);margin-bottom:24px;scroll-margin-top:84px}
+.setcard>h2{font:var(--fw-black) var(--fs-xl)/1.1 var(--f-display);letter-spacing:-.03em;margin:0 0 4px}
+.setcard>.sub{color:var(--ink-2);font-size:14px;margin:0 0 8px;max-width:680px}
+.fl{display:block;font:var(--fw-semibold) 13px/1.3 var(--f-display);color:var(--ink-2);margin:20px 0 8px}
+.fl .hint{display:inline;margin:0 0 0 6px;font-weight:var(--fw-regular)}
+.frow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.frow .field{flex:1;min-width:200px;width:auto}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 20px}
+.srclist{margin-top:16px;border-radius:var(--r-m);background:var(--surface-2);overflow:hidden}
+.src{padding:16px 20px;border-bottom:1px solid var(--line)}
+.src:last-child{border-bottom:0}
+.srow{display:flex;align-items:center;gap:16px}
+.srow .num{font:var(--fw-black) 15px var(--f-display);color:var(--ink-3);width:18px}
+.srow .sn{flex:1;min-width:0;font-weight:var(--fw-semibold)}
+.srow .sn small{display:block;font-weight:var(--fw-regular);font-size:13px;color:var(--ink-3);margin-top:2px}
+.src .sub{margin:14px 0 0 34px}
+.src .sub .field{background:var(--surface)}
+.sticky-gap{height:1px}
 
-  .badge { display:inline-flex; align-items:center; gap:4px; font:600 10px/1.3 var(--font);
-           letter-spacing:.06em; text-transform:uppercase; padding:3px 7px; border-radius:var(--r-sm);
-           background:var(--panel3); border:1px solid var(--border-strong); color:var(--tag-tx); margin-left:6px; }
-  .badge.conv { background:var(--warn-soft); border-color:var(--warn-line); color:var(--warn-tx); }
-  .badge.free { background:var(--ok-soft); border-color:var(--ok-line); color:var(--ok-tx); }
-  .badge.acct { background:var(--info-soft); border-color:var(--info-line); color:var(--info-tx); }
+@media (max-width:760px){
+  .topbar{padding:16px}
+  main{padding:8px 16px 120px}
+  .addbar{flex-wrap:wrap}
+  .setcard{padding:22px 18px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:24px 16px}
+  .health{margin-left:0;justify-content:flex-start}
+}
 
-  /* ---- status- en voortgangsregels ---- */
-  .searching-line { margin-top:8px; font:400 13px/1.4 var(--font); color:var(--info-tx);
-                    display:flex; align-items:center; gap:8px; }
-  .pulse { width:7px; height:7px; border-radius:999px; background:var(--info); flex:none;
-           animation:ebPulse 1.4s ease-in-out infinite; }
-  .health .searching-chip { color:var(--info-tx); display:inline-flex; align-items:center; gap:6px; }
-
-  .progress { height:6px; background:var(--panel3); border-radius:999px; margin-top:8px; overflow:hidden; }
-  .progress > div { height:100%; background:var(--accent); border-radius:999px; transition:width .4s ease; }
-
-  .ok-line, .err-line, .warn-line { font:400 13px/1.5 var(--font); margin-top:8px;
-    display:flex; align-items:flex-start; gap:8px; }
-  .ok-line { color:var(--ok-tx); } .err-line { color:var(--danger-tx); } .warn-line { color:var(--warn-tx); }
-  .ok-line .ic, .err-line .ic, .warn-line .ic { margin-top:1px; }
-  .linkbtn { background:none; border:0; color:var(--accent-hi); cursor:pointer; font:inherit;
-             padding:0; text-decoration:underline; text-underline-offset:2px; }
-
-  /* ---- boek toevoegen / autocomplete ---- */
-  .addbar { position:relative; margin-bottom:22px; }
-  .addbar input { width:100%; }
-  .suggest { position:absolute; z-index:10; left:0; right:0; background:var(--panel);
-    border:1px solid var(--border-strong); border-radius:var(--r-md); margin-top:6px;
-    max-height:420px; overflow-y:auto; box-shadow:var(--sh-2); }
-  .suggest .opt { display:flex; gap:12px; padding:10px 14px; cursor:pointer; align-items:center;
-                  border-bottom:1px solid var(--border); }
-  .suggest .opt:last-child { border-bottom:none; }
-  .suggest .opt:hover { background:var(--panel3); }
-  .suggest .opt img { width:30px; height:45px; object-fit:cover; border-radius:var(--r-sm);
-                      background:var(--cover-grad); border:1px solid var(--border); flex:none; }
-
-  .row2 { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-  label { display:block; margin:16px 0 6px; font:500 13px/1.4 var(--font); color:var(--muted); }
-  .form-row { width:100%; }
-  .hint { font:400 12px/1.5 var(--font); color:var(--faint); margin-top:4px; }
-
-  /* ---- lijsten ---- */
-  .listbox { background:var(--panel); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; }
-  .result-item { padding:14px 16px; border-bottom:1px solid var(--border);
-                 display:flex; justify-content:space-between; align-items:center; gap:12px; }
-  .result-item:last-child { border-bottom:none; }
-  .result-item.dim { opacity:.45; }
-
-  .msg { padding:12px 14px; border-radius:var(--r-md); margin-bottom:14px; font:400 13px/1.5 var(--font);
-         display:flex; align-items:flex-start; gap:10px; }
-  .msg .ic { margin-top:1px; }
-  .msg.ok  { background:var(--ok-soft);     border:1px solid var(--ok-line);     color:var(--ok-tx); }
-  .msg.err { background:var(--danger-soft); border:1px solid rgba(217,105,95,.32); color:var(--danger-tx); }
-
-  .empty { color:var(--muted); text-align:center; padding:40px 24px; border:1px dashed var(--border-strong);
-           border-radius:var(--r-lg); display:flex; flex-direction:column; align-items:center; gap:12px;
-           font:500 14px/1.5 var(--font); }
-  .empty .ic { color:var(--faint); }
-  .suggest .empty, .dialog .empty, #link-list .empty { border:0; padding:22px; }
-
-  .toolbar { display:flex; gap:8px; margin-bottom:16px; align-items:center; flex-wrap:wrap; }
-  .toolbar .lbl { font:500 13px/1 var(--font); color:var(--muted); }
-
-  h3 { font:600 12px/1 var(--font); letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
-       margin:28px 0 12px; display:flex; align-items:center; gap:8px; }
-  h3 .ic { color:var(--muted); }
-  .dialog h3 { font:600 17px/1.3 var(--font); letter-spacing:-.01em; text-transform:none; color:var(--text); }
-
-  /* filterknoppen = pills met teller */
-  .filter-btn { border-radius:999px; }
-  .filter-btn .fc { color:var(--faint); margin-left:2px; }
-  .filter-btn.active { background:var(--accent-soft); border-color:var(--accent-line); color:var(--accent-hi); }
-  .filter-btn.active .fc { color:var(--accent); }
-  .book-filter { flex:1; min-width:200px; }
-
-  /* ---- suggesties (Volgen) ---- */
-  .sug-group { background:var(--panel2); border:1px solid var(--border); border-radius:var(--r-lg);
-               overflow:hidden; margin-bottom:14px; }
-  .sug-group-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-                    padding:14px 16px; background:var(--panel); border-bottom:1px solid var(--border); cursor:pointer; }
-  .sug-group-head .gname { font:600 15px/1.3 var(--font); }
-  .sug-group-head .cnt { color:var(--muted); font-weight:400; font-size:13px; }
-  .sug-group-body { padding:16px; display:flex; flex-direction:column; gap:10px; }
-  .sug-group-body .card { margin:0; border-radius:var(--r-md); padding:12px; align-items:center; }
-  .sug-group-body .cover { width:40px; height:60px; }
-  .pager { display:flex; align-items:center; gap:10px; justify-content:center; padding-top:4px;
-           font:400 13px/1 var(--font); color:var(--muted); }
-  .pager button { background:var(--panel3); border:1px solid var(--border); color:var(--text);
-                  border-radius:var(--r-md); padding:6px 10px; cursor:pointer; min-height:0;
-                  font:500 12px/1 var(--font); display:inline-flex; align-items:center; gap:5px; }
-  .pager button:disabled { opacity:.45; cursor:default; }
-
-  /* ---- instellingen: sticky subnav + savebar ---- */
-  .subnav { position:sticky; top:0; z-index:20; display:flex; gap:2px; flex-wrap:wrap; margin-bottom:24px;
-            background:var(--bg); border:1px solid var(--border); border-radius:var(--r-md); padding:6px; }
-  .subnav a { font:500 13px/1 var(--font); color:var(--muted); text-decoration:none;
-              padding:7px 11px; border-radius:var(--r-md); }
-  .subnav a:hover { color:var(--text); background:var(--panel3); }
-  .subnav a.spy { color:var(--accent-hi); background:var(--accent-soft); }
-  #settings h3 { scroll-margin-top:72px; }
-  #settings h3:first-of-type { margin-top:4px; }
-  .savebar { position:sticky; bottom:0; z-index:20; background:var(--panel);
-             border-top:1px solid var(--border-strong); box-shadow:0 -6px 18px rgba(0,0,0,.45);
-             padding:14px 0; margin-top:28px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-  .savebar .msg { margin:0; }
-
-  /* ---- Activity ---- */
-  .rec-row { display:flex; align-items:center; gap:12px; padding:11px 16px; border-bottom:1px solid var(--border);
-             font:400 13px/1.4 var(--font); }
-  .rec-row:last-child { border-bottom:none; }
-  .rec-row .rec-word { font-weight:500; min-width:96px; }
-  .rec-row .rec-title { color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .rec-row .rec-time { margin-left:auto; color:var(--faint); font-size:12px; white-space:nowrap; }
-  .rec-row .rec-detail { color:var(--faint); font-size:12px; }
-
-  /* ---- overlay / dialoog ---- */
-  .overlay { position:fixed; inset:0; background:rgba(8,9,14,.72); display:flex;
-             align-items:center; justify-content:center; z-index:100; padding:16px; animation:ebFade .15s ease; }
-  .dialog { background:var(--panel); border-radius:var(--r-lg); box-shadow:var(--sh-3);
-            padding:24px; max-width:440px; width:100%; animation:ebRise .16s ease;
-            display:flex; flex-direction:column; gap:14px; }
-  .dialog #link-list { margin:0 -24px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
-  .dialog #link-list .result-item { padding-left:24px; padding-right:24px; }
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.2 5.8.9-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.9z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM20 20l-4.8-4.8"/></symbol>
+  <symbol id="i-pick" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+  <symbol id="i-rescan" viewBox="0 0 24 24"><path d="M19.5 11A7.5 7.5 0 0 0 6 6.8M4.5 3.5v4h4M4.5 13A7.5 7.5 0 0 0 18 17.2M19.5 20.5v-4h-4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5l9 16H3zM12 10v4.5M12 17.2v.01"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2h8A1.5 1.5 0 0 1 20.5 9v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5h10a4 4 0 0 1 4 4V20H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11"/></symbol>
+  <symbol id="i-wanted" viewBox="0 0 24 24"><path d="M6.5 4h11v16.5L12 16.8l-5.5 3.7z"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15zM10 20.5h4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4"/></symbol>
+  <symbol id="i-chevD" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+  <symbol id="i-chevR" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-chevL" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-hide" viewBox="0 0 24 24"><path d="M3.5 3.5l17 17M10.6 6.2A9 9 0 0 1 12 6c5 0 9 6 9 6a15.6 15.6 0 0 1-2.7 3.3M6.7 6.8C4.4 8.3 3 12 3 12s4 6 9 6a8.5 8.5 0 0 0 4.3-1.2M10 10a2.8 2.8 0 0 0 4 4"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4.5 4.5h6v6h-6zM13.5 4.5h6v6h-6zM4.5 13.5h6v6h-6zM13.5 13.5h6v6h-6z"/></symbol>
+  <symbol id="i-rows" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M7.5 4.5v15M4.5 16.5l3 3 3-3M16.5 19.5v-15M13.5 7.5l3-3 3 3"/></symbol>
+  <symbol id="i-select" viewBox="0 0 24 24"><path d="M4.5 4.5h15v15h-15zM8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 7.5V12l3 2"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5.5h16l-6.2 7.5v5.5l-3.6-1.8V13z"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10M19.5 4.5l-8.5 8.5M17.5 14v5a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V7a.5.5 0 0 1 .5-.5h5"/></symbol>
+  <symbol id="i-convert" viewBox="0 0 24 24"><path d="M4.5 8.5h14L15 5M19.5 15.5h-14L9 19"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h7l4.5 4.5v12.5H7zM14 3.5V8h4.5"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="M8 14.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zM11.5 11H20M17 11v3M20 11v2"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><path d="M4.5 4.5h15v6h-15zM4.5 13.5h15v6h-15zM8 7.5h.01M8 16.5h.01"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14.5L4.5 10 9 5.5M4.5 10H15a4.5 4.5 0 0 1 0 9h-3"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 4l8.5 4.5L12 13 3.5 8.5zM3.5 12.5L12 17l8.5-4.5"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4.5 20.5a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-reader" viewBox="0 0 24 24"><path d="M4 6.5c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6.5v12"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4.5h11l3.5 3.5v11.5h-14.5zM8 4.5v5h7v-5M8 19.5v-6h8v6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01"/></symbol>
+</svg>
 
-<header>
-  <div class="hbar">
-    <div class="brand"><span class="logo"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5zM4 17.5A1.5 1.5 0 0 1 5.5 16H19"></path></svg></span>EbookArr</div>
-    <div class="health" id="health"></div>
-  </div>
-  <nav>
-    <button class="tab-btn active" data-tab="wanted">Wanted</button>
-    <button class="tab-btn" data-tab="activity">Activity</button>
-    <button class="tab-btn" data-tab="authors">Volgen <span id="follow-dot" class="tabdot" style="display:none;"></span></button>
-    <button class="tab-btn" data-tab="settings">Instellingen</button>
+<header class="topbar">
+  <a class="brand" href="#" onclick="showTab('wanted'); return false;" aria-label="EbookArr — naar Wanted">
+    <span class="logo"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span>
+    <span class="h">ebookarr</span>
+  </a>
+  <nav class="mainnav" aria-label="Hoofdmenu">
+    <button class="pill pill-on tab-btn" data-tab="wanted" aria-current="page">Wanted</button>
+    <button class="pill tab-btn" data-tab="activity">Activity<b id="act-count" hidden></b></button>
+    <button class="pill tab-btn" data-tab="authors">Volgen<span id="follow-dot" class="dot" hidden style="background:var(--done-fg);box-shadow:0 0 0 3px var(--done-bg)"></span></button>
+    <button class="pill tab-btn" data-tab="settings">Instellingen</button>
   </nav>
+  <div class="health" id="health" aria-label="Verbindingen"></div>
 </header>
 
 <main>
-  <div id="wanted" class="panel active">
-    <div class="addbar">
-      <input id="book-search" placeholder="Zoek een boek op titel om toe te voegen…" autocomplete="off">
-      <div id="suggest" class="suggest" style="display:none;"></div>
+  <!-- ================= WANTED ================= -->
+  <section id="wanted" class="panel active" aria-label="Wanted">
+    <div class="addblock">
+      <div class="addbar">
+        <div class="addfield">
+          <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+          <label class="sr" for="book-search">Zoek een boek om toe te voegen</label>
+          <input id="book-search" class="field" role="combobox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list"
+                 placeholder="Zoek een boek op titel, auteur of ISBN…" autocomplete="off">
+          <div id="suggest" class="suggest" role="listbox" aria-label="Zoekresultaten" hidden></div>
+        </div>
+        <button class="btn btn-lg" onclick="toggleManual()" aria-controls="manual"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Handmatig</button>
+      </div>
+      <div id="manual" class="manual" hidden>
+        <label class="sr" for="new-title">Titel</label><input id="new-title" class="field" placeholder="Titel">
+        <label class="sr" for="new-author">Auteur</label><input id="new-author" class="field" placeholder="Auteur (optioneel)">
+        <button class="btn btn-acc" onclick="addManual()"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Toevoegen</button>
+      </div>
+      <div class="actionrow">
+        <button class="btn" onclick="searchAll()"><svg class="i" aria-hidden="true"><use href="#i-bolt"/></svg>Alles nu zoeken</button>
+        <button class="btn" onclick="rescanLibrary()"><svg class="i" aria-hidden="true"><use href="#i-rescan"/></svg>Bibliotheek herscannen</button>
+      </div>
     </div>
-    <div class="toolbar">
-      <button class="btn small" onclick="toggleManual()"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg> Handmatig toevoegen</button>
-      <button class="btn secondary small" onclick="searchAll()"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5 14h5l-1 7 8-11h-5z"></path></svg> Alles nu zoeken</button>
-      <button class="btn secondary small" onclick="rescanLibrary()"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v3.5h-3.5"></path></svg> Bibliotheek herscannen</button>
-      <span id="manual" style="display:none;" class="row2">
-        <input id="new-title" placeholder="Titel">
-        <input id="new-author" placeholder="Auteur (optioneel)">
-        <button class="btn small" onclick="addManual()">Toevoegen</button>
-      </span>
-    </div>
-    <div class="toolbar">
-      <span class="lbl">Toon:</span>
-      <button class="btn secondary small filter-btn active" data-filter="all" onclick="setFilter('all')">Alles</button>
-      <button class="btn secondary small filter-btn" data-filter="wanted" onclick="setFilter('wanted')">Gewenst</button>
-      <button class="btn secondary small filter-btn" data-filter="downloading" onclick="setFilter('downloading')">Downloadt</button>
-      <button class="btn secondary small filter-btn" data-filter="downloaded" onclick="setFilter('downloaded')">Binnengehaald</button>
-      <input id="book-filter" class="book-filter" placeholder="Filter op titel, auteur of reeks…"
-             oninput="filterBooks()" style="padding:6px 10px;font-size:13px;">
-      <select id="book-sort" onchange="setBookSort(this.value)" title="Sorteren op"
-              style="padding:4px 8px;font-size:13px;min-height:32px;">
+
+    <div class="filterrow">
+      <div class="chips" role="group" aria-label="Statusfilter">
+        <button class="chip chip-on filter-btn" data-filter="all" aria-pressed="true" onclick="setFilter('all')">Alles <b>0</b></button>
+        <button class="chip filter-btn" data-filter="wanted" aria-pressed="false" onclick="setFilter('wanted')">Gewenst <b>0</b></button>
+        <button class="chip filter-btn" data-filter="searching" aria-pressed="false" onclick="setFilter('searching')">Zoeken <b>0</b></button>
+        <button class="chip filter-btn" data-filter="downloading" aria-pressed="false" onclick="setFilter('downloading')">Downloadt <b>0</b></button>
+        <button class="chip filter-btn" data-filter="downloaded" aria-pressed="false" onclick="setFilter('downloaded')">Binnen <b>0</b></button>
+        <button class="chip filter-btn" data-filter="failed" aria-pressed="false" onclick="setFilter('failed')">Mislukt <b>0</b></button>
+      </div>
+      <span class="grow"></span>
+      <label class="sr" for="book-filter">Filter op titel, auteur of reeks</label>
+      <input id="book-filter" class="field sm" placeholder="Filter…" oninput="filterBooks()">
+      <label class="sr" for="book-sort">Sorteren op</label>
+      <select id="book-sort" class="field sm" onchange="setBookSort(this.value)">
         <option value="title">Boeknaam (A–Z)</option>
         <option value="author">Auteur (achternaam)</option>
         <option value="series">Reeks (op deelnummer)</option>
@@ -329,107 +544,87 @@
         <option value="year-asc">Release (oud → nieuw)</option>
         <option value="added">Laatst toegevoegd</option>
       </select>
-      <button class="btn secondary small" onclick="toggleSelect()" id="select-toggle">Selecteren</button>
-    </div>
-    <div id="select-bar" class="toolbar" style="display:none;">
-      <label style="margin:0;font-size:13px;"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this.checked)"> Alles</label>
-      <span id="select-count" style="font-size:13px;color:var(--muted);">0 geselecteerd</span>
-      <button class="btn danger small" style="margin-left:auto;" onclick="openDeleteDialog()">Verwijderen</button>
-    </div>
-    <div id="wanted-msg"></div>
-    <div id="books-list"></div>
-  </div>
-
-  <div id="link-overlay" class="overlay" style="display:none;">
-    <div class="dialog" style="max-width:560px;">
-      <h3 style="margin-top:0;">Bestand koppelen</h3>
-      <p id="link-text" style="color:var(--muted);font-size:14px;margin-top:0;"></p>
-      <div id="link-list" style="max-height:52vh;overflow-y:auto;"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
-        <button class="btn secondary" onclick="document.getElementById('link-overlay').style.display='none'">Sluiten</button>
+      <div class="seg" role="group" aria-label="Weergave">
+        <button class="ib" id="view-grid" aria-pressed="true" aria-label="Kaften" title="Kaften" onclick="setView('grid')"><svg class="i" aria-hidden="true"><use href="#i-grid"/></svg></button>
+        <button class="ib" id="view-rows" aria-pressed="false" aria-label="Lijst" title="Lijst" onclick="setView('rows')"><svg class="i" aria-hidden="true"><use href="#i-rows"/></svg></button>
       </div>
+      <button class="btn btn-sm" id="select-toggle" aria-pressed="false" onclick="toggleSelect()"><svg class="i" aria-hidden="true" style="width:16px;height:16px"><use href="#i-select"/></svg>Selecteren</button>
     </div>
-  </div>
 
-  <div id="delete-overlay" class="overlay" style="display:none;">
-    <div class="dialog">
-      <h3 style="margin-top:0;">Boeken verwijderen</h3>
-      <p id="delete-text" style="color:var(--muted);font-size:14px;"></p>
-      <label style="display:flex;gap:8px;align-items:center;font-size:14px;">
-        <input type="checkbox" id="delete-files"> Ook de gedownloade epub-bestanden uit de bibliotheek verwijderen
-      </label>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
-        <button class="btn secondary" onclick="closeDeleteDialog()">Annuleren</button>
-        <button class="btn danger" onclick="confirmDelete()">Verwijderen</button>
-      </div>
-    </div>
-  </div>
+    <div id="wanted-msg" aria-live="polite"></div>
+    <div id="books-list" class="grid" role="list"></div>
+  </section>
 
-  <div id="activity" class="panel">
-    <h3 style="margin-top:0;"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 13 2.5-7h5"></path></svg>Nu aan het zoeken</h3>
+  <!-- ================= TOEVOEGEN: VOLLEDIGE RESULTATEN ================= -->
+  <section id="add-results" class="panel" aria-label="Zoekresultaten">
+    <button class="btn btn-flat" onclick="showTab('wanted')"><svg class="i" aria-hidden="true"><use href="#i-chevL"/></svg>Terug</button>
+    <h1 class="ptitle" id="add-results-title" style="margin-top:12px"></h1>
+    <div id="add-results-msg" aria-live="polite"></div>
+    <div id="add-results-list"></div>
+  </section>
+
+  <!-- ================= ACTIVITY ================= -->
+  <section id="activity" class="panel" aria-label="Activity">
+    <h1 class="ptitle">Activity</h1>
+    <h2 class="sect"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg>Nu aan het zoeken</h2>
     <div id="activity-searching"></div>
-    <h3><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M8 11.5l4 4 4-4M4.5 19.5h15"></path></svg>Downloads bezig</h3>
+    <h2 class="sect"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Downloads bezig</h2>
     <div id="activity-downloads"></div>
-    <h3><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M12 7.5V12l3 2"></path></svg>Recent</h3>
+    <h2 class="sect"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg>Recent</h2>
+    <div class="chips" role="group" aria-label="Filter recente gebeurtenissen" style="margin-bottom:16px">
+      <button class="chip chip-on rec-filter" data-rf="all" aria-pressed="true" onclick="setRecFilter('all')">Alles</button>
+      <button class="chip rec-filter" data-rf="import" aria-pressed="false" onclick="setRecFilter('import')">Imports</button>
+      <button class="chip rec-filter" data-rf="failed" aria-pressed="false" onclick="setRecFilter('failed')">Fouten</button>
+    </div>
     <div id="activity-recent"></div>
-  </div>
+  </section>
 
-  <div id="authors" class="panel">
-    <h3 style="margin-top:0;">Auteurs &amp; reeksen volgen</h3>
-    <p style="color:var(--muted);font-size:14px;">
-      EbookArr checkt dagelijks op nieuwe boeken (in je leestalen). Nieuwe vondsten
-      komen als <b>suggestie</b> hieronder te staan — ze worden niet automatisch
-      gedownload. Bij openstaande suggesties zie je een groen bolletje op het tabblad.
-    </p>
-    <div class="row2">
-      <select id="follow-type">
+  <!-- ================= VOLGEN ================= -->
+  <section id="authors" class="panel" aria-label="Volgen">
+    <h1 class="ptitle">Volgen</h1>
+    <p class="lead">Volg een auteur of reeks. EbookArr checkt dagelijks op nieuwe boeken (in je leestalen) en zet die als <b>suggestie</b> klaar; je beslist zelf wat je toevoegt. Een groen bolletje bij Volgen betekent dat er suggesties wachten.</p>
+    <div class="followform">
+      <label class="sr" for="follow-type">Type</label>
+      <select id="follow-type" class="field">
         <option value="author">Auteur</option>
         <option value="series">Reeks</option>
       </select>
-      <input id="follow-name" placeholder="bv. Terry Pratchett  /  Discworld" style="flex:1;">
-      <input id="follow-author" placeholder="Auteur van de reeks (optioneel)" style="flex:1;display:none;">
-      <button class="btn small" onclick="addFollow()">Toevoegen</button>
-      <button class="btn secondary small" onclick="checkFollows()">Nu checken</button>
+      <label class="sr" for="follow-name">Naam</label>
+      <input id="follow-name" class="field" placeholder="bv. Terry Pratchett  /  Discworld">
+      <label class="sr" for="follow-author">Auteur van de reeks</label>
+      <input id="follow-author" class="field" placeholder="Auteur van de reeks (optioneel)" hidden>
+      <button class="btn btn-acc" onclick="addFollow()"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Volgen</button>
+      <button class="btn" onclick="checkFollows()"><svg class="i" aria-hidden="true"><use href="#i-rescan"/></svg>Nu checken</button>
     </div>
-    <div id="authors-msg"></div>
-    <div id="follows-list" style="margin-top:14px;"></div>
+    <div id="authors-msg" aria-live="polite"></div>
+    <div id="follows-list" class="chips"></div>
 
-    <h3>Suggesties</h3>
-    <div class="hint" style="margin-bottom:6px;">
-      <b>Negeren</b> = nooit meer voorstellen. <b>× Verwijderen</b> = nu uit de lijst,
-      maar kan bij een volgende check terugkomen.
-    </div>
-    <label class="hint" style="display:flex;gap:7px;align-items:center;margin-bottom:4px;cursor:pointer;">
-      <input type="checkbox" id="hide-companions" checked onchange="loadSuggestions()">
-      Companions verbergen (dagboeken, atlassen, quiz- en kleurboeken, kalenders…)
-      <span id="companion-note" style="color:var(--muted);"></span>
-    </label>
-    <label class="hint" style="display:flex;gap:7px;align-items:center;margin-bottom:12px;">
-      Sorteren:
-      <select id="sug-sort" onchange="setSugSort(this.value)" style="padding:4px 8px;font-size:13px;">
+    <h2 class="sect"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg>Suggesties</h2>
+    <p class="hint" style="margin:-8px 0 16px"><b>Negeren</b> = nooit meer voorstellen. <b>✕</b> = nu uit de lijst, maar kan bij een volgende check terugkomen.</p>
+    <div class="sugtools">
+      <label class="crow"><input type="checkbox" id="hide-companions" checked onchange="loadSuggestions()"><span>Companions verbergen <span id="companion-note" class="ink-3"></span></span></label>
+      <span class="grow"></span>
+      <label class="sr" for="sug-sort">Sorteren</label>
+      <select id="sug-sort" class="field sm" onchange="setSugSort(this.value)">
         <option value="title">Titel (A–Z)</option>
         <option value="year">Jaar (oud → nieuw)</option>
         <option value="year-desc">Jaar (nieuw → oud)</option>
       </select>
-    </label>
+    </div>
     <div id="suggestions-list"></div>
 
-    <h3 style="cursor:pointer;" onclick="toggleDismissed()">
-      Genegeerd <span id="dismissed-count" style="color:var(--muted);font-weight:400;"></span>
-      <span id="dismissed-caret"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10 6 6 6-6 6"></path></svg></span>
-    </h3>
-    <div id="dismissed-list" style="display:none;"></div>
-  </div>
+    <h2 class="sect" style="margin-top:36px">
+      <button class="gtoggle" id="dismissed-toggle" aria-expanded="false" aria-controls="dismissed-list" onclick="toggleDismissed()">
+        <span id="dismissed-caret"><svg class="i" aria-hidden="true"><use href="#i-chevR"/></svg></span>Genegeerd <small id="dismissed-count"></small>
+      </button>
+    </h2>
+    <div id="dismissed-list" hidden></div>
+  </section>
 
-  <div id="add-results" class="panel">
-    <button class="btn secondary" onclick="showTab('wanted')"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"></path></svg> Terug</button>
-    <h3 id="add-results-title" style="margin-top:16px;"></h3>
-    <div id="add-results-msg"></div>
-    <div id="add-results-list"></div>
-  </div>
-
-  <div id="settings" class="panel">
-    <nav class="subnav">
+  <!-- ================= INSTELLINGEN ================= -->
+  <section id="settings" class="panel" aria-label="Instellingen">
+    <h1 class="ptitle">Instellingen</h1>
+    <nav class="subnav" aria-label="Secties">
       <a href="#set-prowlarr">Prowlarr</a>
       <a href="#set-qbit">qBittorrent</a>
       <a href="#set-zoeken">Zoeken</a>
@@ -438,150 +633,183 @@
       <a href="#set-opds">Leesapps</a>
     </nav>
 
-    <h3 id="set-prowlarr">Prowlarr</h3>
-    <label>Prowlarr URL</label>
-    <input class="form-row" id="prowlarr_url" placeholder="http://localhost:9696">
-    <label>Prowlarr API key</label>
-    <input class="form-row" id="prowlarr_api_key" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen">
-    <div class="hint" id="prowlarr_api_key_hint"></div>
-    <div style="margin-top:10px;"><button class="btn secondary" onclick="testProwlarr()">Verbinding testen</button></div>
+    <section class="setcard" id="set-prowlarr">
+      <h2>Prowlarr</h2>
+      <label class="fl" for="prowlarr_url">Prowlarr URL</label>
+      <input class="field" id="prowlarr_url" placeholder="http://localhost:9696">
+      <label class="fl" for="prowlarr_api_key">Prowlarr API key</label>
+      <input class="field" id="prowlarr_api_key" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen">
+      <div class="hint" id="prowlarr_api_key_hint"></div>
+      <div style="margin-top:20px"><button class="btn" onclick="testProwlarr()"><svg class="i" aria-hidden="true"><use href="#i-server"/></svg>Verbinding testen</button></div>
+    </section>
 
-    <h3 id="set-qbit">qBittorrent</h3>
-    <label>qBittorrent Web UI URL</label>
-    <input class="form-row" id="qbittorrent_url" placeholder="http://localhost:8080">
-    <label>Gebruikersnaam</label>
-    <input class="form-row" id="qbittorrent_username" autocomplete="off">
-    <label>Wachtwoord</label>
-    <input class="form-row" id="qbittorrent_password" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen">
-    <div class="hint" id="qbittorrent_password_hint"></div>
-    <div style="margin-top:10px;"><button class="btn secondary" onclick="testQbittorrent()">Verbinding testen</button></div>
+    <section class="setcard" id="set-qbit">
+      <h2>qBittorrent</h2>
+      <label class="fl" for="qbittorrent_url">Web UI URL</label>
+      <input class="field" id="qbittorrent_url" placeholder="http://localhost:8080">
+      <div class="fgrid">
+        <div><label class="fl" for="qbittorrent_username">Gebruikersnaam</label><input class="field" id="qbittorrent_username" autocomplete="off"></div>
+        <div><label class="fl" for="qbittorrent_password">Wachtwoord</label><input class="field" id="qbittorrent_password" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen"></div>
+      </div>
+      <div class="hint" id="qbittorrent_password_hint"></div>
+      <div style="margin-top:20px"><button class="btn" onclick="testQbittorrent()"><svg class="i" aria-hidden="true"><use href="#i-server"/></svg>Verbinding testen</button></div>
+    </section>
 
-    <h3 id="set-zoeken">Zoeken &amp; downloaden</h3>
-    <label>Automatisch zoeken — interval (uren)</label>
-    <input class="form-row" id="search_interval_hours" type="number" min="1" value="6">
-    <label><input type="checkbox" id="auto_download"> Beste release automatisch downloaden</label>
-    <label>Minimum aantal seeders</label>
-    <input class="form-row" id="min_seeders" type="number" min="0" value="1">
-    <label>Prowlarr-categorieën (Torznab-ids, komma-gescheiden)</label>
-    <input class="form-row" id="prowlarr_categories" placeholder="7000,7020">
-    <div class="hint">7000 = Books, 7020 = Books/EBook. Leeg = alle categorieën.</div>
-    <label>Na hoeveel uur zonder seeders geldt een download als vastgelopen?</label>
-    <input class="form-row" id="stalled_hours" type="number" min="1" value="24">
+    <section class="setcard" id="set-zoeken">
+      <h2>Zoeken &amp; downloaden</h2>
+      <div class="fgrid">
+        <div><label class="fl" for="search_interval_hours">Automatisch zoeken — interval (uren)</label><input class="field" id="search_interval_hours" type="number" min="1" value="6"></div>
+        <div><label class="fl" for="min_seeders">Minimum aantal seeders</label><input class="field" id="min_seeders" type="number" min="0" value="1"></div>
+        <div><label class="fl" for="stalled_hours">Vastgelopen na (uren zonder seeders)</label><input class="field" id="stalled_hours" type="number" min="1" value="24"></div>
+        <div><label class="fl" for="prowlarr_categories">Prowlarr-categorieën</label><input class="field" id="prowlarr_categories" placeholder="7000,7020"></div>
+      </div>
+      <div class="hint">Torznab-ids, komma-gescheiden. 7000 = Books, 7020 = Books/EBook. Leeg = alle categorieën.</div>
+      <label class="crow" style="margin-top:24px"><input type="checkbox" id="auto_download"><span>Beste release automatisch downloaden</span></label>
+      <label class="crow" style="margin-top:16px"><input type="checkbox" id="accept_kindle"><span>Ook Kindle-formaten (mobi/azw3) accepteren en bij importeren naar epub converteren</span></label>
+      <div class="hint" id="calibre_hint"></div>
+      <label class="fl" for="calibre_path">Pad naar ebook-convert.exe <span class="hint">(leeg = automatisch zoeken)</span></label>
+      <input class="field" id="calibre_path" placeholder="C:\Program Files\Calibre2\ebook-convert.exe">
+      <label class="crow" style="margin-top:24px"><input type="checkbox" id="embed_metadata"><span>Titel, auteur, taal en cover ín het epub-bestand schrijven bij importeren (via Calibre)</span></label>
+      <div class="hint" id="embed_hint"></div>
+    </section>
 
-    <label><input type="checkbox" id="accept_kindle"> Ook Kindle-formaten (mobi/azw3) accepteren en bij importeren naar epub converteren</label>
-    <div class="hint" id="calibre_hint"></div>
-    <input class="form-row" id="calibre_path" placeholder="pad naar ebook-convert.exe (leeg = automatisch zoeken)" style="margin-top:6px;">
-    <label style="margin-top:12px;"><input type="checkbox" id="embed_metadata"> Titel, auteur, taal en cover ín het epub-bestand schrijven bij importeren (via Calibre)</label>
-    <div class="hint" id="embed_hint"></div>
+    <section class="setcard" id="set-bronnen">
+      <h2>Downloadbronnen</h2>
+      <p class="sub">Er wordt in deze volgorde gezocht; zodra een bron een bruikbare epub oplevert, stopt het zoeken. Torrents (Prowlarr) zijn altijd de laatste redmiddel.</p>
+      <div class="srclist">
+        <div class="src"><div class="srow"><span class="num">1</span><label class="sn" for="src_gutenberg">Project Gutenberg<small>klassiekers, publiek domein</small></label><input type="checkbox" class="sw" id="src_gutenberg" role="switch"></div></div>
+        <div class="src"><div class="srow"><span class="num">2</span><label class="sn" for="src_standardebooks">Standard Ebooks<small>mooi opgemaakte publiek-domein epubs</small></label><input type="checkbox" class="sw" id="src_standardebooks" role="switch"></div></div>
+        <div class="src">
+          <div class="srow"><span class="num">3</span><label class="sn" for="src_libgen">Library Genesis<small>vaak geblokkeerd door de provider — werkt meestal alleen met VPN</small></label><input type="checkbox" class="sw" id="src_libgen" role="switch"></div>
+          <div class="sub"><label class="sr" for="libgen_mirror">LibGen-mirror</label><input class="field" id="libgen_mirror" placeholder="mirror vastzetten, bv. libgen.is (leeg = automatisch)"></div>
+        </div>
+        <div class="src">
+          <div class="srow"><span class="num">4</span><label class="sn" for="src_zlibrary">Z-Library<small>gratis account, ± 10 downloads per dag</small></label><input type="checkbox" class="sw" id="src_zlibrary" role="switch"></div>
+          <div class="sub">
+            <div class="fgrid" style="gap:12px 16px">
+              <div><label class="sr" for="zlib_email">Z-Library e-mail</label><input class="field" id="zlib_email" placeholder="Z-Library e-mail" autocomplete="off"></div>
+              <div><label class="sr" for="zlib_password">Z-Library wachtwoord</label><input class="field" id="zlib_password" type="password" placeholder="Z-Library wachtwoord" autocomplete="new-password"></div>
+            </div>
+            <label class="sr" for="zlib_domain">Z-Library domein</label>
+            <input class="field" id="zlib_domain" placeholder="domein vastzetten (leeg = automatisch)" style="margin-top:12px">
+            <div class="hint" id="zlib_hint"></div>
+          </div>
+        </div>
+        <div class="src">
+          <div class="srow"><span class="num">5</span><label class="sn" for="annas_key">Anna's Archive<small>member-key, optioneel — leeg = uit</small></label></div>
+          <div class="sub"><input class="field" id="annas_key" type="password" autocomplete="new-password" placeholder="alleen nodig met betaald lidmaatschap"></div>
+        </div>
+      </div>
+    </section>
 
-    <h3 id="set-bronnen">Downloadbronnen</h3>
-    <div class="hint" style="margin-bottom:8px;">Er wordt in deze volgorde gezocht; gestopt bij de eerste bron met een bruikbare epub. Torrents (Prowlarr) zijn altijd de laatste redmiddel.</div>
-    <label style="margin-top:6px;"><input type="checkbox" id="src_gutenberg"> 1. Project Gutenberg <span class="hint">(klassiekers, publiek domein)</span></label>
-    <label style="margin-top:6px;"><input type="checkbox" id="src_standardebooks"> 2. Standard Ebooks <span class="hint">(mooi opgemaakte publiek-domein epubs)</span></label>
-    <label style="margin-top:6px;"><input type="checkbox" id="src_libgen"> 3. Library Genesis <span class="hint">(vaak geblokkeerd door de provider — werkt meestal alleen met VPN)</span></label>
-    <input class="form-row" id="libgen_mirror" placeholder="mirror vastzetten, bv. libgen.is (leeg = automatisch)" style="margin-top:4px;">
-    <label style="margin-top:10px;"><input type="checkbox" id="src_zlibrary"> 4. Z-Library <span class="hint">(gratis account, ~10 downloads/dag)</span></label>
-    <div class="row2" style="margin-top:4px;">
-      <input id="zlib_email" placeholder="Z-Library e-mail" style="flex:1;" autocomplete="off">
-      <input id="zlib_password" type="password" placeholder="Z-Library wachtwoord" style="flex:1;" autocomplete="new-password">
+    <section class="setcard" id="set-bib">
+      <h2>Bibliotheek &amp; metadata</h2>
+      <label class="fl" for="library_folder">Bibliotheekmap <span class="hint">(de epub wordt hierheen gekopieerd)</span></label>
+      <input class="field" id="library_folder" placeholder="D:\Boeken\Ebooks">
+      <label class="fl">Talen die je leest</label>
+      <div class="frow" style="gap:28px">
+        <label class="crow"><input type="checkbox" id="lang_en" value="en"><span>Engels</span></label>
+        <label class="crow"><input type="checkbox" id="lang_nl" value="nl"><span>Nederlands</span></label>
+      </div>
+      <div class="hint">Boeken en releases in andere talen worden weggefilterd bij het zoeken.</div>
+      <label class="fl" for="google_books_key">Google Books API-sleutel <span class="hint">(optioneel — voorkomt "te veel verzoeken" bij het zoeken)</span></label>
+      <div class="frow">
+        <input class="field" id="google_books_key" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen">
+        <button class="btn" type="button" onclick="testGoogle()"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Sleutel testen</button>
+      </div>
+      <div class="hint" id="google_books_key_hint"></div>
+    </section>
+
+    <section class="setcard" id="set-opds">
+      <h2>Leesapps (OPDS)</h2>
+      <p class="sub">Voeg deze link toe in een leesapp (KOReader, Thorium, Moon+ Reader, Librera, Marvin…) om je bibliotheek te bladeren en boeken te downloaden over je wifi.</p>
+      <label class="fl" for="opds_url">OPDS-link</label>
+      <div class="frow">
+        <input class="field" id="opds_url" readonly style="font-family:var(--f-mono);font-size:14px" onclick="this.select()">
+        <button class="btn" type="button" onclick="copyOpds()"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg>Kopiëren</button>
+      </div>
+      <label class="crow" style="margin-top:24px"><input type="checkbox" id="opds_auth" onchange="opdsAuthToggle()"><span>Beveiligen met een wachtwoord</span></label>
+      <div class="fgrid" id="opds_creds" hidden>
+        <div><label class="fl" for="opds_user">Gebruikersnaam</label><input class="field" id="opds_user" autocomplete="off"></div>
+        <div><label class="fl" for="opds_password">Wachtwoord</label><input class="field" id="opds_password" type="password" autocomplete="new-password"></div>
+      </div>
+      <div class="hint" id="opds_hint"></div>
+    </section>
+
+    <div class="floatbar" id="savebar" role="region" aria-label="Instellingen opslaan">
+      <span class="sv" id="save-state"></span>
+      <div id="settings-msg" aria-live="polite"></div>
+      <button class="btn btn-acc" onclick="saveSettings()"><svg class="i" aria-hidden="true"><use href="#i-save"/></svg>Instellingen opslaan</button>
     </div>
-    <input class="form-row" id="zlib_domain" placeholder="Z-Library domein vastzetten (leeg = automatisch)" style="margin-top:4px;">
-    <div class="hint" id="zlib_hint" style="margin-top:4px;"></div>
-    <label style="margin-top:10px;">Anna's Archive member-key <span class="hint">(optioneel; leeg = uit)</span></label>
-    <input class="form-row" id="annas_key" type="password" autocomplete="new-password" placeholder="alleen nodig met betaald lidmaatschap">
-
-    <h3 id="set-bib">Bibliotheek &amp; metadata</h3>
-    <label>Bibliotheekmap (epub wordt hierheen gekopieerd)</label>
-    <input class="form-row" id="library_folder" placeholder="D:\Boeken\Ebooks">
-    <label>Talen die je leest</label>
-    <div class="row2">
-      <label style="margin:0;"><input type="checkbox" id="lang_en" value="en"> Engels</label>
-      <label style="margin:0;"><input type="checkbox" id="lang_nl" value="nl"> Nederlands</label>
-    </div>
-    <div class="hint">Boeken en releases in andere talen worden weggefilterd bij het zoeken.</div>
-    <label style="margin-top:18px;">Google Books API-sleutel <span class="hint">(optioneel — voorkomt "te veel verzoeken" bij het zoeken)</span></label>
-    <div class="row2">
-      <input id="google_books_key" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen" style="flex:1;">
-      <button class="btn secondary small" type="button" onclick="testGoogle()">Sleutel testen</button>
-    </div>
-    <div class="hint" id="google_books_key_hint"></div>
-
-    <h3 id="set-opds">Leesapps (OPDS)</h3>
-    <div class="hint" style="margin-bottom:8px;">Voeg deze link toe in een leesapp (KOReader, Thorium, Moon+ Reader, Librera, Marvin…) om je bibliotheek te bladeren en boeken te downloaden over je wifi.</div>
-    <div class="row2" style="align-items:stretch;">
-      <input class="form-row" id="opds_url" readonly style="flex:1;font-family:monospace;" onclick="this.select()">
-      <button class="btn secondary small" type="button" onclick="copyOpds()">Kopieer</button>
-    </div>
-    <label style="margin-top:12px;"><input type="checkbox" id="opds_auth" onchange="opdsAuthToggle()"> Beveiligen met een wachtwoord</label>
-    <div class="row2" id="opds_creds" style="display:none;margin-top:4px;">
-      <input id="opds_user" placeholder="gebruikersnaam" autocomplete="off" style="flex:1;">
-      <input id="opds_password" type="password" placeholder="wachtwoord" autocomplete="new-password" style="flex:1;">
-    </div>
-    <div class="hint" id="opds_hint"></div>
-
-    <div class="savebar">
-      <button class="btn" onclick="saveSettings()">Instellingen opslaan</button>
-      <div id="settings-msg"></div>
-    </div>
-  </div>
-
-  <div id="search-panel" class="panel">
-    <button class="btn secondary" onclick="showTab('wanted')"><svg class="ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"></path></svg> Terug</button>
-    <div id="search-head" class="card" style="align-items:center;margin:16px 0 10px;"></div>
-    <label><input type="checkbox" id="show-all-formats" onchange="rerunSearch()"> Toon ook niet-epub releases</label>
-    <div id="search-results"></div>
-  </div>
+  </section>
 </main>
 
+<!-- ================= zwevende selectiebalk ================= -->
+<div class="floatbar" id="select-bar" role="region" aria-label="Selectie" hidden>
+  <span><b id="select-count">0</b> geselecteerd</span>
+  <button class="btn btn-sm" id="select-all-btn" onclick="toggleSelectAll()">Alles selecteren</button>
+  <button class="btn btn-sm" onclick="toggleSelect()">Selectie stoppen</button>
+  <button class="btn btn-sm btn-danger" onclick="openDeleteDialog()"><svg class="i" aria-hidden="true" style="width:16px;height:16px"><use href="#i-trash"/></svg>Verwijderen</button>
+</div>
+
+<!-- ================= dialogen ================= -->
+<div id="pick-overlay" class="overlay" hidden>
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="pick-title">
+    <div class="dhead">
+      <div class="grow" id="pick-head"></div>
+      <button class="ib ib-flat" aria-label="Sluiten" onclick="closeModal('pick-overlay')"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <label class="crow"><input type="checkbox" id="pick-all" onchange="rerunSearch()"><span>Toon ook niet-epub releases</span></label>
+    <div id="pick-results" class="dscroll"></div>
+  </div>
+</div>
+
+<div id="link-overlay" class="overlay" hidden>
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="link-title">
+    <div class="dhead">
+      <div class="grow"><h2 id="link-title">Bestand koppelen</h2><p id="link-text" style="margin-top:8px"></p></div>
+      <button class="ib ib-flat" aria-label="Sluiten" onclick="closeModal('link-overlay')"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div id="link-list" class="dscroll"></div>
+    <div class="dfoot"><button class="btn" onclick="closeModal('link-overlay')">Sluiten</button></div>
+  </div>
+</div>
+
+<div id="delete-overlay" class="overlay" hidden>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-text">
+    <h2 id="delete-title">Boeken verwijderen</h2>
+    <p id="delete-text"></p>
+    <label class="crow" id="delete-files-row"><input type="checkbox" id="delete-files"><span>Ook de gedownloade epub-bestanden uit de bibliotheek verwijderen</span></label>
+    <div class="dfoot">
+      <button class="btn" id="delete-cancel" onclick="closeDeleteDialog()">Annuleren</button>
+      <button class="btn btn-danger" onclick="confirmDelete()"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Verwijderen</button>
+    </div>
+  </div>
+</div>
+
 <script>
+/* ================= basis ================= */
+const $ = id => document.getElementById(id);
 let currentBookId = null;
 let currentBookTitle = "";
 let suggestTimer = null;
 let booksById = {};
 
-// ---- Iconen: losse inline <svg>, 24-grid, stroke 1.5, round (uit het herontwerp) ----
-const ICONS = {
-  book:'M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5zM4 17.5A1.5 1.5 0 0 1 5.5 16H19',
-  search:'M17.5 10.5a7 7 0 1 1-14 0 7 7 0 0 1 14 0M15.5 15.5 20 20',
-  plus:'M12 5v14M5 12h14',
-  bolt:'M13 3 5 14h5l-1 7 8-11h-5z',
-  rescan:'M20 12a8 8 0 1 1-2.34-5.66M20 4v3.5h-3.5',
-  star:'m12 4 2.4 4.9 5.6.8-4 3.85.95 5.45L12 16.4l-4.95 2.6L8 13.55 4 9.7l5.6-.8z',
-  list:'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
-  link:'M10.5 13.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1 1M13.5 10.5a3.5 3.5 0 0 0-5 0L6 13a3.5 3.5 0 0 0 5 5l1-1',
-  x:'M6 6l12 12M18 6 6 18',
-  folder:'M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5A1.5 1.5 0 0 1 17.5 19h-13A1.5 1.5 0 0 1 3 17.5z',
-  download:'M12 4v11M8 11.5l4 4 4-4M4.5 19.5h15',
-  check:'m5 12.5 4.5 4.5L19 7',
-  warn:'M12 4.5 21 19.5H3zM12 10v4.5M12 17h.01',
-  error:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M9 9l6 6M15 9l-6 6',
-  clock:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0M12 7.5V12l3 2',
-  person:'M16.5 8.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0M4 20a8 8 0 0 1 16 0',
-  stack:'M12 3 3 7.5 12 12l9-4.5zM3 12l9 4.5 9-4.5M3 16.5 12 21l9-4.5',
-  chevL:'m14 6-6 6 6 6',
-  chevR:'m10 6 6 6-6 6',
-  chevD:'m6 10 6 6 6-6',
-  activity:'M3 12h4l2.5-6 4 13 2.5-7h5',
-  file:'M13.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8.5zM13.5 3.5v5h5',
-  arrow:'M5 12h13M13 7l5 5-5 5',
-};
-function icon(name, size, filled) {
-  size = size || 16;
-  const st = filled
-    ? ' fill="currentColor" stroke="none"'
-    : ' fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
-  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24"${st} aria-hidden="true"><path d="${ICONS[name] || ''}"></path></svg>`;
+function icon(name, size) {
+  const s = size ? ` style="width:${size}px;height:${size}px"` : '';
+  return `<svg class="i" aria-hidden="true"${s}><use href="#i-${name}"/></svg>`;
+}
+function escapeHtml(str) {
+  const d = document.createElement('div'); d.textContent = str == null ? '' : str; return d.innerHTML;
+}
+function norm(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+function mainTitle(t) { return (t || '').split(/\s*[:(\[]/)[0]; }
+function initials(t) {
+  const w = (t || '').split(/\s+/).filter(x => x && !/^(the|a|an|de|het|een|of|en|and)$/i.test(x));
+  return (w.slice(0, 2).map(x => x[0]).join('') || (t || '?')[0] || '?').toUpperCase();
 }
 
-// Placeholder-cover (boek-icoon in de panel-kleur) voor als er geen cover is
-const NO_COVER = "data:image/svg+xml," + encodeURIComponent(
-  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 96'>
-     <rect width='64' height='96' fill='#242838'/>
-     <g transform='translate(20 34)' fill='none' stroke='#4d5163' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'>
-       <path d='M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5z'/><path d='M4 17.5A1.5 1.5 0 0 1 5.5 16H19'/></g>
-   </svg>`);
-function coverErr(img) { if (img.src !== NO_COVER) img.src = NO_COVER; }
-// Laat de server de beste werkende cover kiezen (met cache) i.p.v. één vaste URL
+// Cover via de server (die kiest de beste bron); ontbreekt hij, dan een nette placeholder met initialen
 function coverSrc(o) {
   const p = new URLSearchParams();
   if (o.isbn) p.set('isbn', o.isbn);
@@ -590,13 +818,81 @@ function coverSrc(o) {
   if (o.cover_url) p.set('u', o.cover_url);
   return '/api/cover?' + p.toString();
 }
+function coverHtml(o, small) {
+  return `<img src="${escapeHtml(coverSrc(o))}" alt="${small ? '' : 'Cover van ' + escapeHtml(o.title || '')}" loading="lazy"
+    data-title="${escapeHtml(o.title || '')}"${small ? ' data-sm="1"' : ''} onerror="coverErr(this)" onload="if(this.naturalWidth<=1)coverErr(this)">`;
+}
+function coverErr(img) {
+  const t = img.dataset.title || '';
+  const d = document.createElement('div');
+  d.className = 'nocover' + (img.dataset.sm ? ' sm' : '');
+  d.setAttribute('role', 'img');
+  d.setAttribute('aria-label', 'Geen cover' + (t ? ': ' + t : ''));
+  d.innerHTML = `<b>${escapeHtml(initials(t))}</b>` + (img.dataset.sm ? '' : `<span>${escapeHtml(t)}</span>`);
+  img.replaceWith(d);
+}
 
+function noteHtml(type, text) {
+  const k = { ok:'done', info:'search', warn:'dl', err:'fail' }[type] || 'search';
+  const ic = { ok:'check', info:'activity', warn:'alert', err:'alert' }[type] || 'check';
+  return `<div class="note note--${k}" role="${type === 'err' ? 'alert' : 'status'}">${icon(ic, 18)}<span>${escapeHtml(text)}</span>` +
+    (type === 'err' ? `<button class="ib ib-flat" aria-label="Melding sluiten" onclick="this.closest('.note').remove()">${icon('x', 16)}</button>` : '') + `</div>`;
+}
+function setNote(id, type, text) { $(id).innerHTML = noteHtml(type, text); }
+
+/* ---------- dialogen: focus vast, Esc sluit, focus terug ---------- */
+let modalStack = [];
+function openModal(id, focusId) {
+  const el = $(id);
+  el._opener = document.activeElement;
+  el.hidden = false;
+  modalStack = modalStack.filter(x => x !== id).concat(id);
+  setTimeout(() => {
+    const t = (focusId && $(focusId)) || el.querySelector('.dialog button, .dialog input');
+    if (t) t.focus();
+  }, 30);
+}
+function closeModal(id) {
+  const el = $(id);
+  if (!el || el.hidden) return;
+  el.hidden = true;
+  modalStack = modalStack.filter(x => x !== id);
+  const o = el._opener; el._opener = null;
+  if (o && document.contains(o) && o.focus) o.focus();
+}
+document.querySelectorAll('.overlay').forEach(ov => {
+  ov.addEventListener('mousedown', e => {
+    if (e.target !== ov) return;
+    if (ov.id === 'delete-overlay') closeDeleteDialog(); else closeModal(ov.id);
+  });
+  ov.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const f = [...ov.querySelectorAll('.dialog button:not([disabled]), .dialog input:not([disabled]), .dialog a[href], .dialog select')]
+      .filter(x => x.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const top = modalStack[modalStack.length - 1];
+  if (top) { if (top === 'delete-overlay') closeDeleteDialog(); else closeModal(top); return; }
+  hideSuggest();
+});
+
+/* ================= navigatie ================= */
 function showTab(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(name).classList.add('active');
-  const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
-  if (btn) btn.classList.add('active');
+  $(name).classList.add('active');
+  const navName = name === 'add-results' ? 'wanted' : name;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const on = b.dataset.tab === navName;
+    b.classList.toggle('pill-on', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  window.scrollTo({ top: 0 });
 }
 let activityTimer = null;
 document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
@@ -610,14 +906,8 @@ document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', (
   }
 }));
 
-function escapeHtml(str) {
-  const d = document.createElement('div'); d.textContent = str == null ? '' : str; return d.innerHTML;
-}
+/* ================= hulpfuncties ================= */
 function langLabel(l) { return { nl:'NL', en:'EN' }[l] || (l ? l.toUpperCase() : ''); }
-function langTag(l) { const t = langLabel(l); return t ? `<span class="langtag">${t}</span>` : ''; }
-function statusLabel(s) {
-  return { wanted:'Gewenst', searching:'Zoeken', downloading:'Downloadt', downloaded:'Binnengehaald', failed:'Mislukt' }[s] || s;
-}
 function formatSize(bytes) {
   if (!bytes) return '?';
   const nl = n => n.toLocaleString('nl-BE', { maximumFractionDigits: n >= 10 ? 0 : 1 });
@@ -650,69 +940,13 @@ function timeAgo(iso) {
   if (s < 86400) return Math.round(s / 3600) + ' uur geleden';
   return Math.round(s / 86400) + ' dagen geleden';
 }
-
-/* ---------- Activity ---------- */
 function searchPhaseText(info) {
   const auto = info.trigger === 'automatisch' ? ' · automatisch' : '';
   return `${info.phase}${auto}`;
 }
+const SRC_LABELS = { gutenberg:'Gutenberg', standardebooks:'Standard Ebooks', libgen:'LibGen', zlibrary:'Z-Library', prowlarr:'Torrent' };
 
-async function loadActivity() {
-  let a;
-  try { a = await (await fetch('/api/activity')).json(); }
-  catch (e) { return; }
-  applySearching(a.searching || []);
-  const sr = document.getElementById('activity-searching');
-  if (sr) {
-    const items = a.searching || [];
-    sr.innerHTML = items.length ? items.map(x => `
-      <div class="card" style="display:block;">
-        <div class="title">${escapeHtml(x.title)}</div>
-        <div class="searching-line"><span class="pulse"></span>${escapeHtml(searchPhaseText(x))}…</div>
-      </div>`).join('') : `<div class="empty">${icon('activity',24)}<span>Er wordt nu nergens actief naar gezocht.</span></div>`;
-  }
-  const dl = document.getElementById('activity-downloads');
-  if (!a.downloads.length) {
-    dl.innerHTML = `<div class="empty">${icon('download',24)}<span>Geen downloads bezig.</span></div>`;
-  } else {
-    dl.innerHTML = a.downloads.map(d => {
-      const pct = Math.round((d.progress || 0) * 100);
-      const failed = d.status === 'failed';
-      return `
-      <div class="card" style="display:block;">
-        <div class="title">${escapeHtml(d.title)}${d.author ? ' <span style="color:var(--muted);font-weight:400;">— ' + escapeHtml(d.author) + '</span>' : ''}</div>
-        <div class="meta">${escapeHtml(d.release || '')}</div>
-        ${failed ? `<div class="err-line">${icon('error',15)}<span>${escapeHtml(d.last_error || 'mislukt')}</span></div>` : `
-          <div class="progress"><div style="width:${pct}%;"></div></div>
-          <div class="meta">
-            ${pct}% · ${escapeHtml(d.state || '')} ·
-            ↓ ${formatSpeed(d.dlspeed)} ·
-            ETA ${formatEta(d.eta)} ·
-            ${d.num_seeds ?? 0} seeds ·
-            ${formatSize(d.size)}
-          </div>`}
-      </div>`;
-    }).join('');
-  }
-  const REC = {
-    grabbed: { ic:'download', word:'Gepakt', c:'var(--accent-hi)' },
-    import:  { ic:'check',    word:'Geïmporteerd', c:'var(--ok-tx)' },
-    failed:  { ic:'error',    word:'Mislukt', c:'var(--danger-tx)' },
-  };
-  const rec = document.getElementById('activity-recent');
-  rec.innerHTML = a.recent.length ? `<div class="listbox">${a.recent.map(r => {
-    const e = REC[r.event] || { ic:'clock', word:r.event, c:'var(--muted)' };
-    return `<div class="rec-row">
-      <span style="color:${e.c};display:flex;">${icon(e.ic, 15)}</span>
-      <span class="rec-word" style="color:${e.c};">${escapeHtml(e.word)}</span>
-      <span class="rec-title">${escapeHtml(r.book_title || r.release_title || '?')}</span>
-      ${r.detail ? `<span class="rec-detail">${escapeHtml(r.detail)}</span>` : ''}
-      <span class="rec-time">${timeAgo(r.created_at)}</span>
-    </div>`;
-  }).join('')}</div>` : '<div class="empty">Nog niets gebeurd.</div>';
-}
-
-/* ---------- Zoek-voortgang ---------- */
+/* ================= zoek-voortgang + polling ================= */
 let searchingById = {};
 let fastPoll = false;
 function applySearching(list) {
@@ -731,50 +965,127 @@ function syncPollRate() {
   statusTimer = setInterval(loadStatus, fastPoll ? 2000 : 30000);
 }
 
-/* ---------- Health ---------- */
+/* ================= kop: verbindingen ================= */
 async function loadStatus() {
   try {
     const s = await (await fetch('/api/status')).json();
     applySearching(s.searching || []);
-    const cls = v => v === 'ok' ? 'ok'
-      : (v === 'unconfigured' || v === 'unknown') ? 'warn' : 'err';
-    const txt = v => v === 'ok' ? 'verbonden'
-      : v === 'unconfigured' ? 'niet ingesteld'
-      : v === 'unknown' ? 'nog niet gecontroleerd'
-      : (v || '').startsWith('error:') ? 'fout' : 'fout';
-    let last = s.last_search_run ? new Date(s.last_search_run).toLocaleString('nl-BE') : 'nog niet';
+    const cls = v => v === 'ok' ? '' : (v === 'unconfigured' || v === 'unknown') ? 'is-warn' : 'is-err';
+    const txt = v => v === 'ok' ? '' : v === 'unconfigured' ? ' · niet ingesteld' : v === 'unknown' ? ' · nog niet gecontroleerd' : ' · fout';
+    const chip = (label, v, extra, tip) =>
+      `<span class="hchip ${cls(v)}" title="${escapeHtml(tip || label)}"><span class="hdot"></span>${label}${txt(v)}${extra || ''}</span>`;
+    const last = s.last_search_run ? new Date(s.last_search_run).toLocaleString('nl-BE') : 'nog niet';
     const searching = s.searching || [];
     let searchChip = '';
-    if (searching.length === 1) {
-      searchChip = `<span class="searching-chip"><span class="pulse" style="display:inline-block;margin-right:5px;"></span>${escapeHtml(searching[0].title)} — ${escapeHtml(searchPhaseText(searching[0]))}…</span>`;
-    } else if (searching.length > 1) {
-      searchChip = `<span class="searching-chip"><span class="pulse" style="display:inline-block;margin-right:5px;"></span>zoekt naar ${searching.length} boeken…</span>`;
-    }
+    if (searching.length === 1)
+      searchChip = `<span class="hchip is-search" title="${escapeHtml(searchPhaseText(searching[0]))}"><span class="dot pulse hdot"></span>${escapeHtml(searching[0].title)}</span>`;
+    else if (searching.length > 1)
+      searchChip = `<span class="hchip is-search"><span class="dot pulse hdot"></span>zoekt naar ${searching.length} boeken</span>`;
+
     const q = s.zlib_quota;
     const zl = s.zlibrary || 'unconfigured';
-    const zlDetail = zl.startsWith('error:') ? zl.slice(6).trim() : '';
-    let zlExtra = '';   // korte quota-waarschuwing achter het bolletje
-    if (zl === 'ok' && q && q.limit && q.left === 0)
-      zlExtra = ` <span style="color:var(--warn);">— limiet bereikt${q.resets_in ? `, reset over ${escapeHtml(q.resets_in)}` : ''}</span>`;
-    else if (zl === 'ok' && q && q.limit && q.left <= 2)
-      zlExtra = ` <span style="color:var(--muted);">— nog ${q.left} vandaag</span>`;
-    const zlDot = (zl === 'unconfigured') ? '' :
-      `<span class="${cls(zl) === 'err' ? 'hl-err' : ''}" title="${escapeHtml(zlDetail || 'Z-Library')}"><span class="dot ${cls(zl)}"></span>Z-Library ${txt(zl)}${zlExtra}</span>`;
-    const hspan = (v, label) => `<span class="${cls(v) === 'err' ? 'hl-err' : ''}"><span class="dot ${cls(v)}"></span>${label} ${txt(v)}</span>`;
-    document.getElementById('health').innerHTML =
-      hspan(s.prowlarr, 'Prowlarr') +
-      hspan(s.qbittorrent, 'qBittorrent') +
-      (zlDot ? ` ${zlDot}` : '') +
-      `<span>${icon('clock', 13)} laatst gezocht: ${escapeHtml(last)}</span>` +
-      (searchChip ? ` ${searchChip}` : '') +
-      `<span class="mono" title="softwareversie">v${escapeHtml(s.version || '?')}</span>`;
-    const dot = document.getElementById('follow-dot');
-    if (dot) dot.style.display = (s.suggestions_pending > 0) ? 'inline-block' : 'none';
+    let zlChip = '';
+    if (zl !== 'unconfigured') {
+      const detail = zl.startsWith('error:') ? zl.slice(6).trim() : '';
+      if (zl === 'ok' && q && q.limit && q.left === 0)
+        zlChip = `<span class="hchip is-warn" title="Z-Library: daglimiet bereikt"><span class="hdot"></span>Z-Library · limiet${q.resets_in ? `, reset over ${escapeHtml(q.resets_in)}` : ''}</span>`;
+      else
+        zlChip = chip('Z-Library', zl, (zl === 'ok' && q && q.limit && q.left <= 2) ? ` · nog ${q.left} vandaag` : '', detail || 'Z-Library');
+    }
+    $('health').title = `Laatst gezocht: ${last} · v${s.version || '?'}`;
+    $('health').innerHTML = chip('Prowlarr', s.prowlarr) + chip('qBittorrent', s.qbittorrent) + zlChip + searchChip;
+    $('follow-dot').hidden = !(s.suggestions_pending > 0);
   } catch (e) { /* stil */ }
 }
 
-/* ---------- Boek toevoegen via metadata-zoeken ---------- */
-const searchInput = document.getElementById('book-search');
+/* ================= Activity ================= */
+let recData = [], recFilter = 'all';
+function actCard(book, title, author, bodyHtml) {
+  const b = book || { title };
+  return `<div class="actcard"><div class="ac">${coverHtml(b, true)}</div><div class="ab">
+    <div class="at">${escapeHtml(title)}${author ? ` <span>— ${escapeHtml(author)}</span>` : ''}</div>${bodyHtml}</div></div>`;
+}
+async function loadActivity() {
+  let a;
+  try { a = await (await fetch('/api/activity')).json(); }
+  catch (e) { return; }
+  applySearching(a.searching || []);
+
+  const items = a.searching || [];
+  $('activity-searching').innerHTML = items.length
+    ? `<div class="actgrid">${items.map(x => actCard(booksById[x.book_id], x.title, '',
+        `<div class="cstatus is-search"><span class="dot pulse"></span>${escapeHtml(searchPhaseText(x))}…</div>`)).join('')}</div>`
+    : `<div class="empty sm">${icon('activity')}<span>Er wordt nu nergens actief naar gezocht.</span></div>`;
+
+  $('activity-downloads').innerHTML = a.downloads.length
+    ? `<div class="actgrid">${a.downloads.map(d => {
+        const pct = Math.round((d.progress || 0) * 100);
+        const body = d.status === 'failed'
+          ? `<div class="cstatus is-fail clamp">${escapeHtml(d.last_error || 'mislukt')}</div>`
+          : `<div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Voortgang"><span style="width:${pct}%"></span></div>
+             <div class="cstatus is-dl">${pct}% · ${escapeHtml(d.state || '')} · ${formatSpeed(d.dlspeed)} · ETA ${formatEta(d.eta)} · ${d.num_seeds ?? 0} seeds · ${formatSize(d.size)}</div>
+             ${d.release ? `<div class="cstatus" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.release)}</div>` : ''}`;
+        return actCard(booksById[d.id], d.title, d.author, body);
+      }).join('')}</div>`
+    : `<div class="empty sm">${icon('download')}<span>Geen downloads bezig.</span></div>`;
+
+  recData = a.recent || [];
+  renderRecent();
+}
+function setRecFilter(f) {
+  recFilter = f;
+  document.querySelectorAll('.rec-filter').forEach(b => {
+    const on = b.dataset.rf === f;
+    b.classList.toggle('chip-on', on); b.setAttribute('aria-pressed', on);
+  });
+  renderRecent();
+}
+function renderRecent() {
+  const K = {
+    grabbed: { cls:'k-dl',   ic:'download', word:'Gepakt' },
+    import:  { cls:'k-done', ic:'check',    word:'Geïmporteerd' },
+    failed:  { cls:'k-fail', ic:'alert',    word:'Mislukt' },
+  };
+  const rows = recData.filter(r => recFilter === 'all' || r.event === recFilter);
+  $('activity-recent').innerHTML = rows.length
+    ? `<div class="recent">${rows.map(r => {
+        const k = K[r.event] || { cls:'k-other', ic:'clock', word:r.event };
+        return `<div class="rec ${k.cls}"><span class="rico">${icon(k.ic)}</span>
+          <div class="rb"><div class="rt">${escapeHtml(r.book_title || r.release_title || '?')}</div>
+          <div class="rd">${escapeHtml(k.word)}${r.detail ? ' · ' + escapeHtml(r.detail) : ''}</div></div>
+          <span class="rw">${timeAgo(r.created_at)}</span></div>`;
+      }).join('')}</div>`
+    : `<div class="empty sm">${icon('clock')}<span>${recFilter === 'all' ? 'Nog niets gebeurd.' : 'Niets in deze categorie.'}</span></div>`;
+}
+
+/* ================= boek toevoegen ================= */
+const searchInput = $('book-search');
+let suggestItems = [], suggestActive = -1, suggestQuery = '';
+let resultItems = [];
+
+function onList(it) {
+  const isbn = norm(it.isbn), nt = norm(mainTitle(it.title)), na = norm((it.author || '').split(',')[0]);
+  return _allBooks.some(b => (isbn && norm(b.isbn) === isbn) ||
+    (nt && norm(mainTitle(b.title)) === nt && (!na || !b.author || norm(b.author.split(',')[0]) === na)));
+}
+function looksLikeIsbn(q) {
+  const d = (q || '').replace(/[^\dXx]/g, '');
+  return /^[\d\-\s]{9,17}[\dXx]?$/.test((q || '').trim()) && (d.length === 10 || d.length === 13);
+}
+function hideSuggest() {
+  $('suggest').hidden = true;
+  searchInput.setAttribute('aria-expanded', 'false');
+  searchInput.removeAttribute('aria-activedescendant');
+  suggestActive = -1;
+}
+function setActive(i) {
+  const opts = [...$('suggest').querySelectorAll('.opt[data-i]')];
+  if (!opts.length) return;
+  suggestActive = (i + opts.length) % opts.length;
+  opts.forEach((o, n) => o.setAttribute('aria-selected', n === suggestActive));
+  opts[suggestActive].scrollIntoView({ block: 'nearest' });
+  searchInput.setAttribute('aria-activedescendant', opts[suggestActive].id);
+}
 searchInput.addEventListener('input', e => {
   clearTimeout(suggestTimer);
   const q = e.target.value.trim();
@@ -782,78 +1093,97 @@ searchInput.addEventListener('input', e => {
   suggestTimer = setTimeout(() => fetchSuggest(q), 350);
 });
 searchInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
+  const open = !$('suggest').hidden;
+  if (e.key === 'ArrowDown' && open) { e.preventDefault(); setActive(suggestActive + 1); }
+  else if (e.key === 'ArrowUp' && open) { e.preventDefault(); setActive(suggestActive - 1); }
+  else if (e.key === 'Enter') {
+    if (open && suggestActive >= 0) { e.preventDefault(); pickSuggest(suggestActive); return; }
     const q = searchInput.value.trim();
     if (q.length >= 2) { hideSuggest(); openAddResults(q); }
   }
 });
 document.addEventListener('click', e => {
-  if (!e.target.closest('.addbar')) hideSuggest();
+  if (!e.target.closest('.addfield')) hideSuggest();
 });
-function hideSuggest() { document.getElementById('suggest').style.display = 'none'; }
 
-function metaRowHtml(it, handler) {
-  const isOpt = handler === 'opt';
-  const cover = isOpt ? '30px;height:45px' : '48px;height:72px';
-  const j = JSON.stringify(it).replace(/'/g, "&#39;");
-  return `
-    <div class="${isOpt ? 'opt' : 'result-item'}" ${isOpt ? `onclick='addBook(${j}, this)'` : ''}>
-      <img src="${escapeHtml(coverSrc(it))}" onerror="coverErr(this)" loading="lazy" alt=""
-        style="width:${cover};object-fit:cover;border-radius:4px;background:var(--cover-grad);border:1px solid var(--border);flex:none;">
-      <div style="flex:1;min-width:0;">
-        <div>${escapeHtml(it.title)} ${it.year ? `<span style="color:var(--muted)">(${it.year})</span>` : ''}</div>
-        <div style="display:block;color:var(--muted);font-size:12px;margin-top:3px;">
-          ${escapeHtml(it.author || 'onbekende auteur')} ${it.language ? '· ' + langTag(it.language) : ''}
-          ${it.isbn ? '· ' + escapeHtml(it.isbn) : ''}
-        </div>
-        ${!isOpt && it.description ? `<div style="display:block;color:var(--muted);font-size:12px;margin-top:4px;">${escapeHtml(it.description.slice(0, 220))}${it.description.length > 220 ? '…' : ''}</div>` : ''}
-      </div>
-      ${!isOpt ? `<button class="btn small" onclick='addBook(${j}, this)'>Toevoegen</button>` : ''}
-    </div>`;
+function optHtml(it, i) {
+  const listed = onList(it);
+  return `<div class="opt${listed ? ' is-listed' : ''}" role="option" id="sg-${i}" data-i="${i}" aria-selected="false" onclick="pickSuggest(${i})">
+    <div class="oc">${coverHtml(it, true)}</div>
+    <div class="ot"><b>${escapeHtml(it.title)}${it.year ? ` <span style="font-weight:400;color:var(--ink-2)">(${it.year})</span>` : ''}</b>
+      <span>${escapeHtml(it.author || 'onbekende auteur')}${it.language ? ' · ' + langLabel(it.language) : ''}${it.isbn ? ' · ' + escapeHtml(it.isbn) : ''}</span></div>
+    <span class="ob${listed ? '' : ' acc'}">${listed ? 'Op je lijst' : 'Toevoegen'}</span></div>`;
 }
-
-function looksLikeIsbn(q) {
-  return /^[\d\-\s]{9,17}[\dXx]?$/.test((q || '').trim()) && (q.replace(/[^\dXx]/g, '').length === 10 || q.replace(/[^\dXx]/g, '').length === 13);
-}
-
 async function fetchSuggest(q) {
-  const box = document.getElementById('suggest');
-  box.innerHTML = '<div class="opt">Zoeken…</div>';
-  box.style.display = 'block';
+  const box = $('suggest');
+  suggestQuery = q;
+  box.innerHTML = '<div class="optnote">Zoeken…</div>';
+  box.hidden = false;
+  searchInput.setAttribute('aria-expanded', 'true');
   try {
     const res = await fetch('/api/metadata/search?q=' + encodeURIComponent(q));
     const items = await res.json();
+    if (q !== searchInput.value.trim()) return;       // intussen verder getypt
     if (!res.ok) throw new Error(items.detail || 'fout');
+    suggestItems = items.slice(0, 8);
     if (!items.length) {
-      box.innerHTML = looksLikeIsbn(q)
-        ? '<div class="opt">Geen boek gevonden met dit ISBN (Google Books en Open Library kennen het niet) — zoek op titel, of gebruik "Handmatig toevoegen".</div>'
-        : '<div class="opt">Niets gevonden — druk Enter voor meer, of "Handmatig toevoegen".</div>';
+      box.innerHTML = `<div class="optnote">${looksLikeIsbn(q)
+        ? 'Geen boek gevonden met dit ISBN (Google Books en Open Library kennen het niet) — zoek op titel, of voeg het handmatig toe.'
+        : 'Niets gevonden — druk Enter voor meer resultaten, of voeg het handmatig toe.'}</div>
+        <div class="optfoot"><button class="btn btn-sm btn-flat" onclick="useManual()">${icon('plus', 16)}Handmatig toevoegen</button></div>`;
       return;
     }
-    box.innerHTML = items.slice(0, 8).map(it => metaRowHtml(it, 'opt')).join('') +
-      `<div class="opt" style="justify-content:center;color:var(--accent);" onclick='openAddResults(${JSON.stringify(q).replace(/'/g, "&#39;")})'>↵ Alle resultaten tonen</div>`;
+    box.innerHTML = suggestItems.map(optHtml).join('') +
+      `<div class="optfoot"><button class="btn btn-sm btn-flat" onclick="hideSuggest();openAddResults(suggestQuery)">Alle resultaten tonen</button>
+       <button class="btn btn-sm btn-flat" onclick="useManual()">${icon('plus', 16)}Handmatig toevoegen</button></div>`;
+    suggestActive = -1;
   } catch (e) {
-    box.innerHTML = `<div class="opt">Fout: ${escapeHtml(e.message)}</div>`;
+    box.innerHTML = `<div class="optnote" style="color:var(--fail-fg)">Fout: ${escapeHtml(e.message)}</div>`;
   }
 }
+function pickSuggest(i) {
+  const it = suggestItems[i];
+  if (!it || onList(it)) return;
+  addBook(it);
+}
+function useManual() {
+  hideSuggest();
+  $('manual').hidden = false;
+  $('new-title').value = searchInput.value.trim();
+  $('new-title').focus();
+}
 
+function resultCard(it, i) {
+  const listed = onList(it);
+  return `<article class="card" role="listitem">
+    <div class="cov" style="box-shadow:var(--shadow-1)">${coverHtml(it)}</div>
+    <div><div class="ctitle" title="${escapeHtml(it.title)}">${escapeHtml(it.title)}</div>
+      <div class="cby">${escapeHtml(it.author || 'onbekende auteur')}${it.year ? ' · ' + it.year : ''}</div></div>
+    <div class="tags">${it.language ? `<span class="tag">${langLabel(it.language)}</span>` : ''}${it.isbn ? `<span class="tag tag--outline">${escapeHtml(it.isbn)}</span>` : ''}</div>
+    ${it.description ? `<div class="cstatus clamp" style="font-weight:400">${escapeHtml(it.description.slice(0, 160))}${it.description.length > 160 ? '…' : ''}</div>` : ''}
+    <div>${listed ? `<span class="cstatus is-done">${icon('check')}Op je lijst</span>`
+      : `<button class="btn btn-acc btn-sm" onclick="addResult(${i}, this)">${icon('plus', 16)}Toevoegen</button>`}</div>
+  </article>`;
+}
 async function openAddResults(q) {
   showTab('add-results');
-  document.getElementById('add-results-title').textContent = `Resultaten voor: ${q}`;
-  document.getElementById('add-results-msg').innerHTML = '';
-  const list = document.getElementById('add-results-list');
-  list.innerHTML = '<div class="empty">Zoeken… (bij een auteursnaam kan dit even duren — de hele bibliografie wordt opgehaald)</div>';
+  $('add-results-title').textContent = `Resultaten voor “${q}”`;
+  $('add-results-msg').innerHTML = '';
+  const list = $('add-results-list');
+  list.innerHTML = `<div class="loading"><span class="dot pulse"></span>Zoeken… (bij een auteursnaam kan dit even duren — de hele bibliografie wordt opgehaald)</div>`;
   try {
     const res = await fetch('/api/metadata/search?deep=1&limit=80&q=' + encodeURIComponent(q));
     const items = await res.json();
     if (!res.ok) throw new Error(items.detail || 'fout');
-    if (!items.length) { list.innerHTML = '<div class="empty">Niets gevonden.</div>'; return; }
-    document.getElementById('add-results-title').textContent = `Resultaten voor: ${q} (${items.length})`;
-    list.innerHTML = `<div class="listbox">${items.map(it => metaRowHtml(it, 'row')).join('')}</div>`;
+    if (!items.length) { list.innerHTML = `<div class="empty">${icon('search')}<span>Niets gevonden.</span></div>`; return; }
+    resultItems = items;
+    $('add-results-title').textContent = `Resultaten voor “${q}” (${items.length})`;
+    list.innerHTML = `<div class="grid" role="list">${items.map(resultCard).join('')}</div>`;
   } catch (e) {
-    list.innerHTML = `<div class="msg err">${escapeHtml(e.message)}</div>`;
+    list.innerHTML = noteHtml('err', e.message);
   }
 }
+function addResult(i, btn) { addBook(resultItems[i], btn); }
 
 async function addBook(data, btn) {
   hideSuggest();
@@ -862,88 +1192,83 @@ async function addBook(data, btn) {
     isbn: data.isbn || null, cover_url: data.cover_url || null,
     description: data.description || null, year: data.year || null, source_id: data.source_id || null
   };
+  const inResults = $('add-results').classList.contains('active');
+  const target = inResults ? 'add-results-msg' : 'wanted-msg';
   const res = await fetch('/api/books', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(payload)
   });
   const d = await res.json();
-  const target = document.getElementById(
-    document.getElementById('add-results').classList.contains('active') ? 'add-results-msg' : 'wanted-msg');
-  if (res.status === 409) {
-    target.innerHTML = `<div class="msg err">${escapeHtml(d.detail)}</div>`;
-    return;
-  }
-  if (!res.ok) { target.innerHTML = `<div class="msg err">${escapeHtml(d.detail || 'toevoegen mislukt')}</div>`; return; }
+  if (res.status === 409) { setNote(target, 'err', d.detail); return; }
+  if (!res.ok) { setNote(target, 'err', d.detail || 'toevoegen mislukt'); return; }
   searchInput.value = '';
-  if (btn && btn.tagName === 'BUTTON') { btn.innerHTML = icon('check', 13) + ' Toegevoegd'; btn.disabled = true; }
-  target.innerHTML = `<div class="msg ok">"${escapeHtml(data.title)}" toegevoegd${d.note ? ' — ' + escapeHtml(d.note) : ''}.</div>`;
+  if (btn) btn.replaceWith(Object.assign(document.createElement('span'),
+    { className: 'cstatus is-done', innerHTML: icon('check') + 'Op je lijst' }));
+  setNote(target, 'ok', `"${data.title}" toegevoegd${d.note ? ' — ' + d.note : ''}.`);
   loadBooks();
 }
 
 function toggleManual() {
-  const m = document.getElementById('manual');
-  m.style.display = m.style.display === 'none' ? 'inline-flex' : 'none';
+  const m = $('manual');
+  m.hidden = !m.hidden;
+  if (!m.hidden) $('new-title').focus();
 }
 function addManual() {
-  const title = document.getElementById('new-title').value.trim();
-  const author = document.getElementById('new-author').value.trim();
-  if (!title) return;
+  const title = $('new-title').value.trim();
+  const author = $('new-author').value.trim();
+  if (!title) { $('new-title').classList.add('is-error'); $('new-title').focus(); return; }
+  $('new-title').classList.remove('is-error');
   addBook({ title, author });
-  document.getElementById('new-title').value = '';
-  document.getElementById('new-author').value = '';
+  $('new-title').value = '';
+  $('new-author').value = '';
+  $('manual').hidden = true;
 }
 
 async function rescanLibrary() {
-  wantedMsg('ok', 'Bibliotheek herscannen…');
+  wantedMsg('info', 'Bibliotheek herscannen…');
   const d = await (await fetch('/api/library/rescan', { method:'POST' })).json();
   const parts = [];
   if (d.added?.length) parts.push(`${d.added.length} nieuw gevonden en toegevoegd: ${d.added.join(', ')}`);
   if (d.relinked?.length) parts.push(`${d.relinked.length} gekoppeld aan een bestaand boek`);
-  if (d.updated?.length) parts.push(`${d.updated.length} op "Binnengehaald" gezet`);
+  if (d.updated?.length) parts.push(`${d.updated.length} op "Binnen" gezet`);
   if (d.lost?.length) parts.push(`${d.lost.length} weer op "Gewenst" (bestand weg): ${d.lost.join(', ')}`);
   wantedMsg(d.lost?.length ? 'err' : 'ok',
     parts.length ? parts.join(' · ') : 'Bibliotheek is in orde — niks aangepast.');
   loadBooks();
 }
 
-/* ---------- Volgen (auteurs + reeksen) ---------- */
-document.getElementById('follow-type').addEventListener('change', e => {
-  document.getElementById('follow-author').style.display = e.target.value === 'series' ? '' : 'none';
+/* ================= Volgen ================= */
+$('follow-type').addEventListener('change', e => {
+  $('follow-author').hidden = e.target.value !== 'series';
 });
-
 function loadAuthors() { loadFollows(); loadSuggestions(); }
 
 async function loadFollows() {
-  const list = document.getElementById('follows-list');
+  const list = $('follows-list');
   const follows = await (await fetch('/api/follows')).json();
-  if (!follows.length) { list.innerHTML = `<div class="empty">${icon('person',24)}<span>Je volgt nog niemand. Voeg hierboven een auteur of reeks toe.</span></div>`; return; }
-  list.innerHTML = follows.map(f => `
-    <div class="card" style="align-items:center;">
-      <span class="logo" style="width:36px;height:36px;flex:none;border-radius:8px;background:var(--panel2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">${icon(f.type === 'series' ? 'stack' : 'person', 17)}</span>
-      <div class="body">
-        <div class="title" style="font-size:15px;">${escapeHtml(f.name)}
-          ${f.author ? `<span class="yr">(${escapeHtml(f.author)})</span>` : ''}</div>
-        <div class="meta" style="margin-top:3px;">
-          ${f.last_checked ? 'laatst gecheckt: ' + timeAgo(f.last_checked) : 'nog niet gecheckt'}
-          ${f.last_result ? ' · ' + escapeHtml(f.last_result) : ''}
-        </div>
-      </div>
-      <button class="icon danger" onclick="deleteFollow(${f.id})" title="Niet meer volgen">${icon('x',16)}</button>
-    </div>`).join('');
+  if (!follows.length) {
+    list.innerHTML = `<div class="empty sm" style="width:100%">${icon('user')}<span>Je volgt nog niemand. Voeg hierboven een auteur of reeks toe.</span></div>`;
+    return;
+  }
+  list.innerHTML = follows.map(f => {
+    const tip = (f.last_checked ? 'laatst gecheckt: ' + timeAgo(f.last_checked) : 'nog niet gecheckt') + (f.last_result ? ' · ' + f.last_result : '');
+    return `<span class="fchip" title="${escapeHtml(tip)}">${icon(f.type === 'series' ? 'layers' : 'user', 18)}${escapeHtml(f.name)}
+      ${f.author ? `<small>(${escapeHtml(f.author)})</small>` : ''}
+      <button class="ib" aria-label="Niet meer volgen: ${escapeHtml(f.name)}" onclick="deleteFollow(${f.id})">${icon('x', 16)}</button></span>`;
+  }).join('');
 }
 async function addFollow() {
-  const type = document.getElementById('follow-type').value;
-  const name = document.getElementById('follow-name').value.trim();
-  const author = document.getElementById('follow-author').value.trim();
-  if (!name) return;
+  const type = $('follow-type').value;
+  const name = $('follow-name').value.trim();
+  const author = $('follow-author').value.trim();
+  if (!name) { $('follow-name').focus(); return; }
   await fetch('/api/follows', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ type, name, author })
   });
-  document.getElementById('follow-name').value = '';
-  document.getElementById('follow-author').value = '';
-  document.getElementById('authors-msg').innerHTML =
-    `<div class="msg ok">"${escapeHtml(name)}" toegevoegd. Klik "Nu checken" of wacht op de dagelijkse controle.</div>`;
+  $('follow-name').value = '';
+  $('follow-author').value = '';
+  setNote('authors-msg', 'ok', `"${name}" toegevoegd. Klik "Nu checken" of wacht op de dagelijkse controle.`);
   loadFollows();
 }
 async function deleteFollow(id) {
@@ -951,29 +1276,25 @@ async function deleteFollow(id) {
   loadFollows();
 }
 async function checkFollows() {
-  document.getElementById('authors-msg').innerHTML = '<div class="msg ok">Bezig met checken…</div>';
+  setNote('authors-msg', 'info', 'Bezig met checken…');
   const d = await (await fetch('/api/follows/check', { method:'POST' })).json();
-  document.getElementById('authors-msg').innerHTML =
-    `<div class="msg ok">${d.checked} gecheckt, ${d.suggested} nieuwe suggestie(s).</div>`;
+  setNote('authors-msg', 'ok', `${d.checked} gecheckt, ${d.suggested} nieuwe suggestie(s).`);
   loadFollows(); loadSuggestions(); loadStatus();
 }
 
 /* --- suggesties: gegroepeerd per follow, 20 per pagina --- */
 const PER_PAGE = 20;
 let sugData = [], dismData = [];
-let sugPage = {}, dismPage = {};        // paginanr per groepsnaam
+let sugPage = {}, dismPage = {};
 let sugCollapsed = {}, dismCollapsed = {};
 let sugSort = (() => { try { return localStorage.getItem('sugSort') || 'title'; } catch (e) { return 'title'; } })();
 
 function sortSuggestions(list) {
   const byTitle = (a, b) => (a.title || '').localeCompare(b.title || '', 'nl', { sensitivity: 'base' });
   const arr = list.slice();
-  if (sugSort === 'year')
-    arr.sort((a, b) => (a.year || 9999) - (b.year || 9999) || byTitle(a, b));
-  else if (sugSort === 'year-desc')
-    arr.sort((a, b) => (b.year || 0) - (a.year || 0) || byTitle(a, b));
-  else
-    arr.sort(byTitle);
+  if (sugSort === 'year') arr.sort((a, b) => (a.year || 9999) - (b.year || 9999) || byTitle(a, b));
+  else if (sugSort === 'year-desc') arr.sort((a, b) => (b.year || 0) - (a.year || 0) || byTitle(a, b));
+  else arr.sort(byTitle);
   return arr;
 }
 function setSugSort(v) {
@@ -982,73 +1303,67 @@ function setSugSort(v) {
   renderGroups('suggestions-list', sugData, false);
   if (dismissedOpen) renderGroups('dismissed-list', dismData, true);
 }
-
 function suggestionCard(s, dismissed) {
-  return `
-    <div class="card" data-sug="${s.id}">
-      <img class="cover" src="${escapeHtml(coverSrc(s))}" onerror="coverErr(this)" loading="lazy">
-      <div class="body">
-        <div class="title">${escapeHtml(s.title)}${s.year ? ` <span style="color:var(--muted);font-weight:400;">(${s.year})</span>` : ''}</div>
-        <div class="meta">${escapeHtml(s.author || '')} ${s.language ? '· ' + langTag(s.language) : ''}</div>
-      </div>
-      <div class="actions">
-        <button class="btn small" onclick="sugAction(${s.id},'accept')">Toevoegen</button>
-        ${dismissed
-          ? `<button class="btn secondary small" onclick="sugAction(${s.id},'restore')">Terugzetten</button>`
-          : `<button class="btn secondary small" onclick="sugAction(${s.id},'dismiss')" title="Nooit meer voorstellen">Negeren</button>`}
-        <button class="icon danger" onclick="sugAction(${s.id},'delete')" title="Uit de lijst halen (kan bij een volgende check terugkomen)">${icon('x',16)}</button>
-      </div>
-    </div>`;
+  return `<article class="card" data-sug="${s.id}">
+    <div class="cov">${coverHtml(s)}</div>
+    <div><div class="ctitle" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</div>
+      <div class="cby">${escapeHtml(s.author || '')}${s.year ? ' · ' + s.year : ''}</div></div>
+    ${s.language ? `<div class="tags"><span class="tag">${langLabel(s.language)}</span></div>` : ''}
+    <div class="sbtns">
+      <button class="btn btn-acc btn-sm" onclick="sugAction(${s.id},'accept')">Toevoegen</button>
+      ${dismissed
+        ? `<button class="btn btn-sm" onclick="sugAction(${s.id},'restore')">Terugzetten</button>`
+        : `<button class="btn btn-sm" onclick="sugAction(${s.id},'dismiss')" title="Nooit meer voorstellen">Negeren</button>`}
+      <button class="ib ib-sm ib-danger" aria-label="Uit de lijst halen: ${escapeHtml(s.title)}" title="Uit de lijst halen (kan bij een volgende check terugkomen)" onclick="sugAction(${s.id},'delete')">${icon('x')}</button>
+    </div></article>`;
 }
 
 const COMPANION_RE = /\b(diary|dagboek|journal|calendar|kalender|almanac|almanak|annual|yearbook|jaarboek|postcard|sticker|colou?ring book|kleurboek|\bquiz\b|\bmapp?\b|\batlas\b|companion|pop-?up|papercraft|the art of|the making of|guide to the|encyclop[ae]dia|fools.? guild|unseen university|pocket book|activity book)\b/i;
 function isCompanion(s) { return COMPANION_RE.test(s.title || ''); }
-
 function groupBy(items) {
   const g = {};
   items.forEach(s => { (g[s.found_via || 'overig'] ||= []).push(s); });
   return g;
 }
+function groupName(k) { return k.replace(/^reeks: /, 'Reeks · ').replace(/^auteur: /, 'Auteur · '); }
 
 function renderGroups(containerId, items, dismissed) {
-  const container = document.getElementById(containerId);
+  const container = $(containerId);
   const groups = groupBy(items);
   const keys = Object.keys(groups).sort();
   if (!keys.length) {
-    container.innerHTML = `<div class="empty">${dismissed ? 'Niets genegeerd.' : 'Geen openstaande suggesties.'}</div>`;
+    container.innerHTML = `<div class="empty sm">${icon('bell')}<span>${dismissed ? 'Niets genegeerd.' : 'Geen openstaande suggesties.'}</span></div>`;
     return;
   }
   const pageState = dismissed ? dismPage : sugPage;
   const collapsed = dismissed ? dismCollapsed : sugCollapsed;
+  const w = dismissed ? 'd' : 's';
   container.innerHTML = keys.map(k => {
     const list = sortSuggestions(groups[k]);
     const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
-    let pg = Math.min(pageState[k] || 0, pages - 1);
+    const pg = Math.min(pageState[k] || 0, pages - 1);
     const isCol = !!collapsed[k];
-    const kEsc = k.replace(/'/g, "\\'");
+    const kEsc = escapeHtml(k.replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
     const slice = list.slice(pg * PER_PAGE, pg * PER_PAGE + PER_PAGE);
-    return `
-    <div class="sug-group">
-      <div class="sug-group-head" onclick="toggleGroup('${dismissed ? 'd' : 's'}','${kEsc}')">
-        ${icon(isCol ? 'chevR' : 'chevD', 16)}
-        <span class="gname">${escapeHtml(k)}</span>
-        <span class="cnt">${list.length} boek${list.length === 1 ? '' : 'en'}</span>
-        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation();">
-          <button class="btn small" onclick="groupAction('${kEsc}',${dismissed},'accept')">Alles toevoegen</button>
-          <button class="btn secondary small" onclick="groupAction('${kEsc}',${dismissed},'${dismissed ? 'restore' : 'dismiss'}')">${dismissed ? 'Alles terugzetten' : 'Alles negeren'}</button>
-          <button class="btn danger small" onclick="groupAction('${kEsc}',${dismissed},'delete')">Alles verwijderen</button>
-        </span>
+    return `<div class="group">
+      <div class="ghead">
+        <button class="gtoggle" aria-expanded="${!isCol}" onclick="toggleGroup('${w}','${kEsc}')">${icon(isCol ? 'chevR' : 'chevD', 22)}${escapeHtml(groupName(k))}
+          <small>${list.length} boek${list.length === 1 ? '' : 'en'}</small></button>
+        <div class="gactions">
+          <button class="btn btn-sm btn-acc" onclick="groupAction('${kEsc}',${dismissed},'accept')">Alles toevoegen</button>
+          <button class="btn btn-sm" onclick="groupAction('${kEsc}',${dismissed},'${dismissed ? 'restore' : 'dismiss'}')">${dismissed ? 'Alles terugzetten' : 'Alles negeren'}</button>
+          <button class="btn btn-sm btn-danger" onclick="groupAction('${kEsc}',${dismissed},'delete')">Alles verwijderen</button>
+        </div>
       </div>
-      ${isCol ? '' : `<div class="sug-group-body">${slice.map(s => suggestionCard(s, dismissed)).join('')}${pages > 1 ? `
-        <div class="pager">
-          <button ${pg === 0 ? 'disabled' : ''} onclick="pageGroup('${dismissed ? 'd' : 's'}','${kEsc}',-1)">${icon('chevL',13)} Vorige</button>
+      ${isCol ? '' : `<div class="gbody"><div class="sugrid" role="list">${slice.map(s => suggestionCard(s, dismissed)).join('')}</div>
+        ${pages > 1 ? `<div class="pager">
+          <button class="btn btn-sm" ${pg === 0 ? 'disabled' : ''} onclick="pageGroup('${w}','${kEsc}',-1)">${icon('chevL', 16)}Vorige</button>
           <span>pagina ${pg + 1} / ${pages}</span>
-          <button ${pg >= pages - 1 ? 'disabled' : ''} onclick="pageGroup('${dismissed ? 'd' : 's'}','${kEsc}',1)">Volgende ${icon('chevR',13)}</button>
+          <button class="btn btn-sm" ${pg >= pages - 1 ? 'disabled' : ''} onclick="pageGroup('${w}','${kEsc}',1)">Volgende${icon('chevR', 16)}</button>
         </div>` : ''}</div>`}
     </div>`;
   }).join('');
 }
-
 function toggleGroup(which, key) {
   const c = which === 'd' ? dismCollapsed : sugCollapsed;
   c[key] = !c[key];
@@ -1059,22 +1374,21 @@ function pageGroup(which, key, delta) {
   p[key] = Math.max(0, (p[key] || 0) + delta);
   which === 'd' ? renderGroups('dismissed-list', dismData, true) : renderGroups('suggestions-list', sugData, false);
 }
-
 async function loadSuggestions() {
-  const sel = document.getElementById('sug-sort');
+  const sel = $('sug-sort');
   if (sel) sel.value = sugSort;
   const raw = await (await fetch('/api/suggestions')).json();
-  const hide = document.getElementById('hide-companions')?.checked;
+  const hide = $('hide-companions')?.checked;
   sugData = hide ? raw.filter(s => !isCompanion(s)) : raw;
   const hidden = raw.length - sugData.length;
   renderGroups('suggestions-list', sugData, false);
-  const note = document.getElementById('companion-note');
-  if (note) note.textContent = (hide && hidden) ? `${hidden} companion(s) verborgen` : '';
+  const note = $('companion-note');
+  if (note) note.textContent = (hide && hidden) ? `(${hidden} verborgen)` : '';
   loadDismissedCount();
 }
 async function loadDismissedCount() {
   const d = await (await fetch('/api/suggestions?state=dismissed')).json();
-  document.getElementById('dismissed-count').textContent = `(${d.length})`;
+  $('dismissed-count').textContent = `${d.length}`;
 }
 let dismissedOpen = false;
 async function refreshDismissed() {
@@ -1085,8 +1399,9 @@ async function refreshDismissed() {
 }
 function toggleDismissed() {
   dismissedOpen = !dismissedOpen;
-  document.getElementById('dismissed-caret').innerHTML = icon(dismissedOpen ? 'chevD' : 'chevR', 15);
-  document.getElementById('dismissed-list').style.display = dismissedOpen ? 'block' : 'none';
+  $('dismissed-caret').innerHTML = icon(dismissedOpen ? 'chevD' : 'chevR', 22);
+  $('dismissed-toggle').setAttribute('aria-expanded', dismissedOpen);
+  $('dismissed-list').hidden = !dismissedOpen;
   refreshDismissed();
 }
 async function sugAction(id, action) {
@@ -1104,20 +1419,33 @@ async function groupAction(key, dismissed, action) {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ ids, action })
   })).json();
-  document.getElementById('authors-msg').innerHTML = `<div class="msg ok">${d.count} ${past}.</div>`;
+  setNote('authors-msg', 'ok', `${d.count} ${past}.`);
   loadSuggestions(); loadStatus(); refreshDismissed();
   if (action === 'accept') loadBooks();
 }
 
+/* ================= Wanted: de boekenlijst ================= */
+let wantedMsgTimer = null;
 function wantedMsg(type, text) {
-  document.getElementById('wanted-msg').innerHTML = `<div class="msg ${type}">${icon(type === 'ok' ? 'check' : 'error', 16)}<span>${escapeHtml(text)}</span></div>`;
-  setTimeout(() => { document.getElementById('wanted-msg').innerHTML = ''; }, 6000);
+  $('wanted-msg').innerHTML = noteHtml(type, text);
+  clearTimeout(wantedMsgTimer);
+  if (type !== 'err') wantedMsgTimer = setTimeout(() => { $('wanted-msg').innerHTML = ''; }, 6000);
 }
 
-/* ---------- Boekenlijst ---------- */
 let currentFilter = 'all';
-
+let selectMode = false;
+let selectedIds = new Set();
+let grabResults = {};   // book_id -> {ok, text}: blijft even op de kaart staan
+let lastShownIds = [];
+let lastSig = '';
+let bookView = (() => { try { return localStorage.getItem('bookView') || 'grid'; } catch (e) { return 'grid'; } })();
 let bookSort = (() => { try { return localStorage.getItem('bookSort') || 'title'; } catch (e) { return 'title'; } })();
+
+function setView(v) {
+  bookView = v;
+  try { localStorage.setItem('bookView', v); } catch (e) {}
+  renderBooks();
+}
 function setBookSort(v) {
   bookSort = v;
   try { localStorage.setItem('bookSort', v); } catch (e) {}
@@ -1141,7 +1469,7 @@ function sortBooks(list) {
     arr.sort((a, b) => {
       const ka = authorSortKey(a.author), kb = authorSortKey(b.author);
       if (ka === null && kb === null) return byTitle(a, b);
-      if (ka === null) return 1;            // zonder auteur onderaan
+      if (ka === null) return 1;
       if (kb === null) return -1;
       return cmp(ka, kb) || byTitle(a, b);
     });
@@ -1149,7 +1477,7 @@ function sortBooks(list) {
     arr.sort((a, b) => {
       const sa = (a.series || '').trim(), sb = (b.series || '').trim();
       if (!sa && !sb) return byTitle(a, b);
-      if (!sa) return 1;                    // zonder reeks onderaan
+      if (!sa) return 1;
       if (!sb) return -1;
       const ia = a.series_index ?? 9999, ib = b.series_index ?? 9999;
       return cmp(sa, sb) || (ia - ib) || ((a.year || 9999) - (b.year || 9999)) || byTitle(a, b);
@@ -1158,21 +1486,17 @@ function sortBooks(list) {
     const dir = bookSort === 'year-desc' ? -1 : 1;
     arr.sort((a, b) => {
       if (!a.year && !b.year) return byTitle(a, b);
-      if (!a.year) return 1;                // zonder jaar onderaan
+      if (!a.year) return 1;
       if (!b.year) return -1;
       return (a.year - b.year) * dir || byTitle(a, b);
     });
   } else if (bookSort === 'added') {
-    arr.sort((a, b) =>
-      (b.added_at || '').localeCompare(a.added_at || '') || (b.id - a.id));
+    arr.sort((a, b) => (b.added_at || '').localeCompare(a.added_at || '') || (b.id - a.id));
   } else {
     arr.sort(byTitle);
   }
   return arr;
 }
-let selectMode = false;
-let selectedIds = new Set();
-let grabResults = {};   // book_id -> {ok, text} : blijft even op de kaart staan
 
 const _grabTimers = {};
 function setGrabResult(id, ok, text) {
@@ -1181,7 +1505,6 @@ function setGrabResult(id, ok, text) {
   clearTimeout(_grabTimers[id]);
   _grabTimers[id] = setTimeout(() => { delete grabResults[id]; renderBooks(); }, 45000);
 }
-
 async function revealBook(id) {
   try {
     const r = await fetch(`/api/books/${id}/reveal`, { method: 'POST' });
@@ -1191,74 +1514,36 @@ async function revealBook(id) {
   } catch (e) { wantedMsg('err', 'Kon de map niet openen: ' + e.message); }
 }
 
-let linkBookId = null;
-async function openLinkDialog(id) {
-  linkBookId = id;
-  const b = booksById[id] || {};
-  document.getElementById('link-text').textContent =
-    `Kies een bestand uit je bibliotheekmap voor "${b.title || ('boek ' + id)}".`;
-  document.getElementById('link-list').innerHTML = '<div class="empty">Bestanden laden…</div>';
-  document.getElementById('link-overlay').style.display = 'flex';
-  let d;
-  try { d = await (await fetch('/api/library/files')).json(); }
-  catch (e) { document.getElementById('link-list').innerHTML = '<div class="msg err">Kon de map niet lezen.</div>'; return; }
-  const files = d.files || [];
-  if (!files.length) {
-    document.getElementById('link-list').innerHTML =
-      `<div class="empty">Geen ebook-bestanden gevonden in ${escapeHtml(d.folder || 'de bibliotheekmap')}.</div>`;
-    return;
-  }
-  files.sort((a, c) => (a.linked_to ? 1 : 0) - (c.linked_to ? 1 : 0) || a.name.localeCompare(c.name, 'nl'));
-  document.getElementById('link-list').innerHTML = files.map(f => `
-    <div class="result-item">
-      <span style="color:var(--faint);display:flex;flex:none;">${icon('file',15)}</span>
-      <div style="flex:1;min-width:0;">
-        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(f.name)}</div>
-        <div class="meta" style="font-size:12px;">${formatSize(f.size)}${f.linked_to ? ' · al gekoppeld aan “' + escapeHtml(f.linked_to) + '”' : ''}</div>
-      </div>
-      <button class="btn small ${f.linked_to ? 'secondary' : ''}" onclick='linkFile(${JSON.stringify(f.path).replace(/'/g, "&#39;")})'>Koppelen</button>
-    </div>`).join('');
-}
-async function linkFile(path) {
-  const res = await fetch(`/api/books/${linkBookId}/link`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path })
-  });
-  const d = await res.json().catch(() => ({}));
-  document.getElementById('link-overlay').style.display = 'none';
-  if (!res.ok) { wantedMsg('err', d.detail || 'Koppelen mislukt.'); return; }
-  const extra = (d.freed && d.freed.length) ? ` "${d.freed.join('", "')}" staat weer op "Gewenst".` : '';
-  wantedMsg('ok', `Bestand gekoppeld — boek staat nu op "Binnengehaald".${extra}`);
-  loadBooks();
-}
-
 function setFilter(f) {
   currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.filter === f));
   renderBooks();
 }
 function toggleSelect() {
   selectMode = !selectMode;
   selectedIds.clear();
-  document.getElementById('select-bar').style.display = selectMode ? 'flex' : 'none';
-  document.getElementById('select-toggle').classList.toggle('active', selectMode);
-  document.getElementById('select-all').checked = false;
-  loadBooks();
+  $('select-bar').hidden = !selectMode;
+  const t = $('select-toggle');
+  t.setAttribute('aria-pressed', selectMode);
+  t.lastChild.textContent = selectMode ? 'Selectie stoppen' : 'Selecteren';
+  updateSelCount();
+  renderBooks();
 }
 function updateSelCount() {
-  document.getElementById('select-count').textContent = selectedIds.size + ' geselecteerd';
+  $('select-count').textContent = selectedIds.size;
+  const all = lastShownIds.length && lastShownIds.every(id => selectedIds.has(id));
+  $('select-all-btn').textContent = all ? 'Niets selecteren' : 'Alles selecteren';
 }
-function toggleOne(id, checked) {
-  if (checked) selectedIds.add(id); else selectedIds.delete(id);
-  document.querySelector(`.card[data-id="${id}"]`)?.classList.toggle('selected', checked);
+function toggleOne(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  renderBooks();
   updateSelCount();
+  document.querySelector(`.card[data-id="${id}"] .cbx`)?.focus();
 }
-function toggleSelectAll(checked) {
-  document.querySelectorAll('#books-list .selbox').forEach(cb => {
-    cb.checked = checked;
-    toggleOne(parseInt(cb.dataset.id), checked);
-  });
+function toggleSelectAll() {
+  const all = lastShownIds.length && lastShownIds.every(id => selectedIds.has(id));
+  if (all) selectedIds.clear(); else lastShownIds.forEach(id => selectedIds.add(id));
+  renderBooks();
+  updateSelCount();
 }
 
 let _allBooks = [];
@@ -1268,86 +1553,15 @@ async function loadBooks() {
   renderBooks();
 }
 function filterBooks() { renderBooks(); }
-function renderBooks() {
-  const books = _allBooks;
-  booksById = {};
-  books.forEach(b => { booksById[b.id] = b; });
-  const list = document.getElementById('books-list');
 
-  // tellers op de filterknoppen
-  const counts = { all: books.length, wanted: 0, downloading: 0, downloaded: 0 };
-  books.forEach(b => { if (counts[b.status] != null) counts[b.status]++; });
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    const f = btn.dataset.filter;
-    const base = { all:'Alles', wanted:'Gewenst', downloading:'Downloadt', downloaded:'Binnengehaald' }[f];
-    btn.innerHTML = `${base} <span class="fc">${counts[f] ?? 0}</span>`;
-  });
-
-  let shown = sortBooks(books);
-  if (currentFilter !== 'all') shown = shown.filter(b => b.status === currentFilter);
-  const q = (document.getElementById('book-filter')?.value || '').trim().toLowerCase();
-  if (q) shown = shown.filter(b =>
-    (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q) ||
-    (b.series || '').toLowerCase().includes(q));
-
-  if (!books.length) {
-    list.innerHTML = `<div class="empty">${icon('book',24)}<span>Nog geen boeken. Zoek er hierboven een op.</span></div>`;
-    return;
-  }
-  if (!shown.length) {
-    list.innerHTML = `<div class="empty">Geen boeken ${q ? 'voor die filter' : 'in deze weergave'}.</div>`;
-    return;
-  }
-  // opruimen: selectie beperken tot nog bestaande boeken
-  selectedIds.forEach(id => { if (!booksById[id]) selectedIds.delete(id); });
-
-  list.innerHTML = shown.map(b => {
-    const pct = Math.round((b.progress || 0) * 100);
-    const monitored = (b.monitored == null ? 1 : b.monitored);
-    const checked = selectedIds.has(b.id);
-    return `
-    <div class="card${checked ? ' selected' : ''}${selectMode ? ' compact' : ''}" data-id="${b.id}">
-      ${selectMode ? `<input type="checkbox" class="selbox" data-id="${b.id}" ${checked ? 'checked' : ''}
-          onchange="toggleOne(${b.id}, this.checked)">` : ''}
-      <img class="cover" src="${escapeHtml(coverSrc(b))}" onerror="coverErr(this)" loading="lazy" alt="">
-      <div class="body">
-        <div class="title">${escapeHtml(b.title)}${b.year ? ` <span class="yr">(${b.year})</span>` : ''}</div>
-        <div class="meta">
-          <span>${escapeHtml(b.author || 'onbekende auteur')}</span>
-          ${b.language ? `<span class="sep">·</span>${langTag(b.language)}` : ''}
-          ${b.series ? `<span class="seriestag" title="Reeks">${escapeHtml(b.series)}${b.series_index != null ? ' #' + b.series_index : ''}</span>` : ''}
-          <span class="pill ${b.status}">${statusLabel(b.status)}</span>
-          <button class="langtoggle" title="Voorkeurstaal om naar te zoeken (klik om te wisselen)"
-              onclick="cyclePrefLang(${b.id})">zoekt: ${prefLangLabel(b)}</button>
-        </div>
-        ${searchingById[b.id] ? `
-          <div class="searching-line"><span class="pulse"></span>${escapeHtml(searchPhaseText(searchingById[b.id]))}…</div>` : ''}
-        ${b.status === 'downloading' ? `
-          <div class="progress"><div style="width:${pct}%;"></div></div>
-          <div class="meta" style="margin-top:6px;">${pct}% · ${escapeHtml(b.dl_state || '')} ${b.grabbed_release ? '· ' + escapeHtml(b.grabbed_release) : ''}</div>` : ''}
-        ${b.status === 'downloaded' && b.library_path ? `
-          <div class="ok-line" title="${escapeHtml(b.library_path)}">${icon('check',15)}<span>in bibliotheek — <button class="linkbtn" onclick="revealBook(${b.id})">map openen</button></span></div>` : ''}
-        ${grabResults[b.id] && !searchingById[b.id] ? `
-          <div class="${grabResults[b.id].ok ? 'ok-line' : 'err-line'}">${grabResults[b.id].ok ? icon('check',15) : icon('error',15)}<span>${escapeHtml(grabResults[b.id].text)}</span></div>` : ''}
-        ${b.last_error && !searchingById[b.id] && !grabResults[b.id] ? `<div class="err-line">${icon('error',15)}<span>${escapeHtml(b.last_error)}</span></div>` : ''}
-      </div>
-      ${selectMode ? '' : `<div class="actions">
-        <button class="icon ${monitored ? 'on' : ''}" title="${monitored ? 'Automatisch zoeken staat aan' : 'Automatisch zoeken staat uit'}"
-          onclick="toggleMonitored(${b.id}, ${monitored ? 0 : 1})">${icon('star', 16, !!monitored)}</button>
-        ${(b.status === 'wanted' || b.status === 'failed')
-          ? (searchingById[b.id]
-              ? `<button class="icon" disabled title="Zoeken…">${icon('search',16)}</button>`
-              : `<button class="icon" onclick="grabBest(${b.id}, this)" title="${b.status === 'failed' ? 'Opnieuw zoeken' : 'Nu zoeken'} — beste epub meteen ophalen">${icon(b.status === 'failed' ? 'rescan' : 'search',16)}</button>`) : ''}
-        <button class="icon" onclick="searchBook(${b.id})" title="Kies zelf — een release handmatig kiezen">${icon('list',16)}</button>
-        ${b.status !== 'downloading'
-          ? `<button class="icon" onclick="openLinkDialog(${b.id})" title="Bestand koppelen uit de bibliotheekmap">${icon('link',16)}</button>` : ''}
-        <button class="icon danger" onclick="deleteBook(${b.id})" title="Verwijderen">${icon('x',16)}</button>
-      </div>`}
-    </div>`;
-  }).join('');
-  updateSelCount();
+function effStatus(b) { return searchingById[b.id] ? 'searching' : b.status; }
+function statusInfo(b) {
+  if (searchingById[b.id]) return { key:'search', label:'Zoeken', pulse:true };
+  if (b.status === 'downloading') return { key:'dl', label:`Downloadt ${Math.round((b.progress || 0) * 100)}%` };
+  if (b.status === 'downloaded') return { key:'done', label:'Binnen' };
+  if (b.status === 'failed') return { key:'fail', label:'Mislukt' };
+  return { key:'wanted', label:'Gewenst' };
 }
-
 function effectivePrefLang(b) {
   if (b.pref_language === 'en' || b.pref_language === 'nl') return b.pref_language;
   return (b.language === 'en') ? 'en' : 'nl';
@@ -1356,18 +1570,150 @@ function prefLangLabel(b) {
   const l = effectivePrefLang(b);
   return (l === 'en' ? 'EN' : 'NL') + (b.pref_language ? '' : ' (auto)');
 }
+function stickerHtml(si) {
+  return `<span class="stk stk--${si.key}">${si.pulse ? '<span class="dot pulse" style="width:6px;height:6px;background:var(--search-fg)"></span>' : ''}${si.label}</span>`;
+}
+function tagsHtml(b) {
+  const parts = [];
+  if (b.series) parts.push(`<span class="tag tag--series" title="Reeks">${escapeHtml(b.series)}${b.series_index != null ? ' #' + b.series_index : ''}</span>`);
+  if (b.language) parts.push(`<span class="tag">${langLabel(b.language)}</span>`);
+  if (b.status !== 'downloaded')
+    parts.push(`<button class="tag tag--outline tagbtn" title="Voorkeurstaal om naar te zoeken (klik om te wisselen)" onclick="cyclePrefLang(${b.id})">zoekt: ${prefLangLabel(b)}</button>`);
+  return parts.length ? `<div class="tags">${parts.join('')}</div>` : '';
+}
+function statusLineHtml(b) {
+  const sp = searchingById[b.id];
+  if (sp) return `<div class="cstatus is-search"><span class="dot pulse"></span>${escapeHtml(searchPhaseText(sp))}…</div>`;
+  const g = grabResults[b.id];
+  if (g) return `<div class="cstatus ${g.ok ? 'is-done' : 'is-fail'} clamp">${icon(g.ok ? 'check' : 'alert')}${escapeHtml(g.text)}</div>`;
+  if (b.status === 'downloading')
+    return `<div class="cstatus is-dl">${escapeHtml(b.dl_state || 'bezig')}${b.grabbed_release ? ' · ' + escapeHtml(b.grabbed_release) : ''}</div>`;
+  if (b.status === 'downloaded' && b.library_path)
+    return `<div class="cstatus is-acc" title="${escapeHtml(b.library_path)}">In bibliotheek · <button class="linkbtn" onclick="revealBook(${b.id})">map openen</button></div>`;
+  if (b.last_error) return `<div class="cstatus is-fail clamp">${escapeHtml(b.last_error)}</div>`;
+  if (b.monitored === 0) return `<div class="cstatus">Automatisch zoeken uit</div>`;
+  return '';
+}
+function starBtn(b, extra) {
+  const on = (b.monitored == null ? 1 : b.monitored) ? true : false;
+  return `<button class="ib ${on ? 'ib-on' : ''}" ${extra || ''} aria-pressed="${on}" aria-label="${on ? 'Automatisch zoeken aan' : 'Automatisch zoeken uit'}: ${escapeHtml(b.title)}"
+    title="${on ? 'Automatisch zoeken staat aan' : 'Automatisch zoeken staat uit'}" onclick="toggleMonitored(${b.id}, ${on ? 0 : 1})">${icon('star', 16)}</button>`;
+}
+function actionBtns(b, sz) {
+  const searching = !!searchingById[b.id];
+  const t = escapeHtml(b.title);
+  const parts = [];
+  if (b.status === 'wanted' || b.status === 'failed') {
+    parts.push(searching
+      ? `<button class="ib" disabled aria-label="Zoeken…" title="Zoeken…">${icon('search', sz)}</button>`
+      : `<button class="ib" aria-label="${b.status === 'failed' ? 'Opnieuw zoeken' : 'Nu zoeken'}: ${t}" title="${b.status === 'failed' ? 'Opnieuw zoeken' : 'Nu zoeken'} — beste epub meteen ophalen" onclick="grabBest(${b.id}, this)">${icon(b.status === 'failed' ? 'rescan' : 'search', sz)}</button>`);
+  }
+  parts.push(`<button class="ib" aria-label="Kies zelf: ${t}" title="Kies zelf — een release handmatig kiezen" onclick="searchBook(${b.id})">${icon('pick', sz)}</button>`);
+  if (b.status !== 'downloading')
+    parts.push(`<button class="ib" aria-label="Bestand koppelen: ${t}" title="Bestand koppelen uit de bibliotheekmap" onclick="openLinkDialog(${b.id})">${icon('link', sz)}</button>`);
+  parts.push(`<button class="ib ib-danger" aria-label="Verwijderen: ${t}" title="Verwijderen" onclick="deleteBook(${b.id})">${icon('trash', sz)}</button>`);
+  return parts.join('');
+}
+function cbxBtn(b, sel) {
+  return `<button class="cbx ${sel ? 'cbx-on' : ''}" role="checkbox" aria-checked="${sel}" aria-label="Selecteer ${escapeHtml(b.title)}"
+    onclick="event.stopPropagation();toggleOne(${b.id})">${sel ? icon('check', 16) : ''}</button>`;
+}
+
+function bookCardHtml(b) {
+  const si = statusInfo(b), sel = selectedIds.has(b.id);
+  const pct = Math.round((b.progress || 0) * 100);
+  return `<article class="card" role="listitem" data-id="${b.id}">
+    <div class="cov${sel ? ' is-selected' : ''}${selectMode ? ' is-pick' : ''}"${selectMode ? ` onclick="toggleOne(${b.id})"` : ''}>
+      ${coverHtml(b)}
+      ${stickerHtml(si)}
+      ${selectMode ? cbxBtn(b, sel) : starBtn(b)}
+      ${b.status === 'downloading' && !searchingById[b.id] ? `<div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Voortgang"><span style="width:${pct}%"></span></div>` : ''}
+      ${selectMode ? '' : `<div class="acts">${actionBtns(b, 16)}</div>`}
+    </div>
+    <div><div class="ctitle" title="${escapeHtml(b.title)}">${escapeHtml(b.title)}</div>
+      <div class="cby">${escapeHtml(b.author || 'onbekende auteur')}${b.year ? ' · ' + b.year : ''}</div></div>
+    ${tagsHtml(b)}
+    ${statusLineHtml(b)}
+  </article>`;
+}
+function bookRowHtml(b) {
+  const si = statusInfo(b), sel = selectedIds.has(b.id);
+  return `<article class="card" role="listitem" data-id="${b.id}">
+    ${selectMode ? `<span class="rowcbx">${cbxBtn(b, sel).replace('class="cbx', 'class="cbx')}</span>` : ''}
+    <div class="cov${sel ? ' is-selected' : ''}">${coverHtml(b, true)}</div>
+    <div class="rinfo">
+      <div class="ctitle" title="${escapeHtml(b.title)}" style="-webkit-line-clamp:1">${escapeHtml(b.title)}</div>
+      <div class="cby">${escapeHtml(b.author || 'onbekende auteur')}${b.year ? ' · ' + b.year : ''}</div>
+      ${tagsHtml(b)}
+    </div>
+    <div class="rmid">${stickerHtml(si)}${statusLineHtml(b)}</div>
+    ${selectMode ? '' : `<div class="rowacts">${starBtn(b)}${actionBtns(b, 16)}</div>`}
+  </article>`;
+}
+
+function renderBooks(force) {
+  const q = ($('book-filter')?.value || '').trim().toLowerCase();
+  const sig = JSON.stringify([_allBooks, Object.entries(searchingById).map(([k, v]) => k + v.phase), grabResults,
+    currentFilter, bookSort, bookView, selectMode, [...selectedIds], q]);
+  if (!force && sig === lastSig) return;
+  lastSig = sig;
+
+  const books = _allBooks;
+  booksById = {};
+  books.forEach(b => { booksById[b.id] = b; });
+  const list = $('books-list');
+
+  // tellers op de filterchips
+  const counts = { all: books.length, wanted: 0, searching: 0, downloading: 0, downloaded: 0, failed: 0 };
+  books.forEach(b => { const s = effStatus(b); if (counts[s] != null) counts[s]++; });
+  const base = { all:'Alles', wanted:'Gewenst', searching:'Zoeken', downloading:'Downloadt', downloaded:'Binnen', failed:'Mislukt' };
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    const f = btn.dataset.filter, on = f === currentFilter;
+    btn.innerHTML = `${base[f]} <b>${counts[f] ?? 0}</b>`;
+    btn.classList.toggle('chip-on', on);
+    btn.setAttribute('aria-pressed', on);
+  });
+  // weergave- en sorteerknoppen
+  $('view-grid').setAttribute('aria-pressed', bookView === 'grid');
+  $('view-rows').setAttribute('aria-pressed', bookView === 'rows');
+  if ($('book-sort').value !== bookSort) $('book-sort').value = bookSort;
+  // Activity-teller in de navigatie
+  const nAct = Object.keys(searchingById).length + books.filter(b => b.status === 'downloading' && !searchingById[b.id]).length;
+  $('act-count').hidden = !nAct; $('act-count').textContent = nAct;
+
+  list.className = bookView === 'rows' ? 'grid rows' : 'grid';
+  let shown = sortBooks(books);
+  if (currentFilter !== 'all') shown = shown.filter(b => effStatus(b) === currentFilter);
+  if (q) shown = shown.filter(b =>
+    (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q) ||
+    (b.series || '').toLowerCase().includes(q));
+  lastShownIds = shown.map(b => b.id);
+  selectedIds.forEach(id => { if (!booksById[id]) selectedIds.delete(id); });
+
+  if (!books.length) {
+    list.className = '';
+    list.innerHTML = `<div class="empty">${icon('book')}<span>Nog geen boeken. Zoek er hierboven een op.</span></div>`;
+    return;
+  }
+  if (!shown.length) {
+    list.className = '';
+    list.innerHTML = `<div class="empty">${icon('filter')}<span>Geen boeken ${q ? 'voor die filter' : 'in deze weergave'}.</span></div>`;
+    return;
+  }
+  list.innerHTML = shown.map(bookView === 'rows' ? bookRowHtml : bookCardHtml).join('');
+  updateSelCount();
+}
+
 async function cyclePrefLang(id) {
   const b = booksById[id]; if (!b) return;
-  // cyclus: auto -> en -> nl -> auto
   const cur = b.pref_language || '';
-  const next = cur === '' ? 'en' : (cur === 'en' ? 'nl' : '');
+  const next = cur === '' ? 'en' : (cur === 'en' ? 'nl' : '');   // auto -> en -> nl -> auto
   await fetch(`/api/books/${id}/pref-language`, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ pref_language: next })
   });
   loadBooks();
 }
-
 async function toggleMonitored(id, val) {
   await fetch(`/api/books/${id}/monitored`, {
     method:'POST', headers:{'Content-Type':'application/json'},
@@ -1375,10 +1721,9 @@ async function toggleMonitored(id, val) {
   });
   loadBooks();
 }
-
 async function grabBest(id, btn) {
   btn.disabled = true;
-  setTimeout(loadStatus, 400);  // laat de voortgang meteen zien
+  setTimeout(loadStatus, 400);
   try {
     const res = await fetch(`/api/books/${id}/grab-best`, { method:'POST' });
     const d = await res.json();
@@ -1390,7 +1735,17 @@ async function grabBest(id, btn) {
   }
   loadBooks(); loadStatus();
 }
+async function searchAll() {
+  wantedMsg('info', 'Zoekronde gestart…');
+  const res = await fetch('/api/search-all', { method:'POST' });
+  const d = await res.json();
+  if (!res.ok) { wantedMsg('err', d.detail || 'fout'); return; }
+  if (d.skipped) wantedMsg('ok', 'Er liep al een zoekronde.');
+  else wantedMsg('ok', `Klaar: ${d.searched} gezocht, ${d.grabbed} gedownload, ${d.errors} fouten.`);
+  loadBooks(); loadStatus();
+}
 
+/* ---------- verwijderen ---------- */
 let pendingDeleteIds = [];
 function deleteBook(id) {
   pendingDeleteIds = [id];
@@ -1401,22 +1756,20 @@ function openDeleteDialog() {
   if (!ids.length) { wantedMsg('err', 'Niets geselecteerd.'); return; }
   pendingDeleteIds = ids;
   const anyDownloaded = ids.some(id => booksById[id] && booksById[id].library_path);
-  document.getElementById('delete-text').textContent =
-    ids.length === 1
-      ? `"${(booksById[ids[0]] || {}).title || 'dit boek'}" verwijderen uit je lijst?`
-      : `${ids.length} boeken verwijderen uit je lijst?`;
-  const df = document.getElementById('delete-files');
-  df.checked = false;
-  df.parentElement.style.display = anyDownloaded ? 'flex' : 'none';
-  document.getElementById('delete-overlay').style.display = 'flex';
+  $('delete-text').textContent = ids.length === 1
+    ? `"${(booksById[ids[0]] || {}).title || 'dit boek'}" verwijderen uit je lijst?`
+    : `${ids.length} boeken verwijderen uit je lijst?`;
+  $('delete-files').checked = false;
+  $('delete-files-row').hidden = !anyDownloaded;
+  openModal('delete-overlay', 'delete-cancel');
 }
 function closeDeleteDialog() {
-  document.getElementById('delete-overlay').style.display = 'none';
+  closeModal('delete-overlay');
   pendingDeleteIds = [];
 }
 async function confirmDelete() {
   const ids = pendingDeleteIds;
-  const deleteFiles = document.getElementById('delete-files').checked;
+  const deleteFiles = $('delete-files').checked;
   closeDeleteDialog();
   const res = await fetch('/api/books/delete', {
     method:'POST', headers:{'Content-Type':'application/json'},
@@ -1426,79 +1779,102 @@ async function confirmDelete() {
   if (!res.ok) { wantedMsg('err', d.detail || 'verwijderen mislukt'); return; }
   let msg = `${d.deleted} verwijderd`;
   if (d.removed_files && d.removed_files.length) msg += `, ${d.removed_files.length} bestand(en) gewist`;
-  if (d.errors && d.errors.length) msg += `. Fouten: ${d.errors.join('; ')}`;
+  if (d.errors && d.errors.length) msg += `. Opmerkingen: ${d.errors.join('; ')}`;
   wantedMsg(d.errors && d.errors.length ? 'err' : 'ok', msg);
   selectedIds.clear();
   if (selectMode) toggleSelect();
   else loadBooks();
 }
-async function searchAll() {
-  wantedMsg('ok', 'Zoekronde gestart…');
-  const res = await fetch('/api/search-all', { method:'POST' });
-  const d = await res.json();
-  if (!res.ok) { wantedMsg('err', d.detail || 'fout'); return; }
-  if (d.skipped) { wantedMsg('ok', 'Er liep al een zoekronde.'); }
-  else { wantedMsg('ok', `Klaar: ${d.searched} gezocht, ${d.grabbed} gedownload, ${d.errors} fouten.`); }
-  loadBooks(); loadStatus();
+
+/* ---------- bestand koppelen ---------- */
+let linkBookId = null;
+async function openLinkDialog(id) {
+  linkBookId = id;
+  const b = booksById[id] || {};
+  $('link-text').textContent = `Kies een bestand uit je bibliotheekmap voor "${b.title || ('boek ' + id)}".`;
+  $('link-list').innerHTML = `<div class="loading"><span class="dot pulse"></span>Bestanden laden…</div>`;
+  openModal('link-overlay');
+  let d;
+  try { d = await (await fetch('/api/library/files')).json(); }
+  catch (e) { $('link-list').innerHTML = noteHtml('err', 'Kon de map niet lezen.'); return; }
+  const files = d.files || [];
+  if (!files.length) {
+    $('link-list').innerHTML = `<div class="empty sm">${icon('folder')}<span>Geen ebook-bestanden gevonden in ${escapeHtml(d.folder || 'de bibliotheekmap')}.</span></div>`;
+    return;
+  }
+  files.sort((a, c) => (a.linked_to ? 1 : 0) - (c.linked_to ? 1 : 0) || a.name.localeCompare(c.name, 'nl'));
+  $('link-list').innerHTML = files.map((f, i) => `<div class="fileitem">${icon('file')}
+    <div class="fb"><div class="fn" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+      <div class="fm">${formatSize(f.size)}${f.linked_to ? ' · al gekoppeld aan “' + escapeHtml(f.linked_to) + '”' : ''}</div></div>
+    <button class="btn btn-sm ${f.linked_to ? '' : 'btn-acc'}" onclick="linkFile(${i})">Koppelen</button></div>`).join('');
+  window._linkFiles = files;
+}
+async function linkFile(i) {
+  const path = (window._linkFiles || [])[i]?.path;
+  if (!path) return;
+  const res = await fetch(`/api/books/${linkBookId}/link`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  });
+  const d = await res.json().catch(() => ({}));
+  closeModal('link-overlay');
+  if (!res.ok) { wantedMsg('err', d.detail || 'Koppelen mislukt.'); return; }
+  const extra = (d.freed && d.freed.length) ? ` "${d.freed.join('", "')}" staat weer op "Gewenst".` : '';
+  wantedMsg('ok', `Bestand gekoppeld — boek staat nu op "Binnen".${extra}`);
+  loadBooks();
 }
 
-/* ---------- Handmatig zoeken ---------- */
+/* ---------- Kies zelf (handmatig een release kiezen) ---------- */
+let pickResults = [];
 async function searchBook(id) {
   const b = booksById[id] || { title: 'boek ' + id };
   currentBookId = id; currentBookTitle = b.title;
-  document.getElementById('show-all-formats').checked = false;
-  showTab('search-panel');
-  document.getElementById('search-head').innerHTML = `
-    <img class="cover" src="${escapeHtml(coverSrc(b))}" onerror="coverErr(this)" alt="" style="width:52px;height:78px;">
-    <div class="body">
-      <div class="title" style="font-size:17px;">${escapeHtml(b.title || '')}</div>
-      <div class="meta" style="margin-top:4px;">${escapeHtml(b.author || '')}${b.year ? ' · ' + b.year : ''} · zoekt: ${b.language ? langTag(b.language) : '—'}</div>
-    </div>`;
+  $('pick-all').checked = false;
+  $('pick-head').innerHTML = `<div class="pickhead"><div class="pcov">${coverHtml(b, true)}</div>
+    <div style="min-width:0"><h2 id="pick-title">${escapeHtml(b.title || '')}</h2>
+    <small>${escapeHtml(b.author || '')}${b.year ? ' · ' + b.year : ''} · zoekt: ${effectivePrefLang(b).toUpperCase()}</small></div></div>`;
+  openModal('pick-overlay');
   rerunSearch();
 }
 function rerunSearch() {
   if (currentBookId != null) doSearch(currentBookId);
 }
-const SRC_LABELS = { gutenberg:'Gutenberg', standardebooks:'Standard Ebooks', libgen:'LibGen', zlibrary:'Z-Library', prowlarr:'Torrent' };
 async function doSearch(id) {
-  const all = document.getElementById('show-all-formats').checked;
-  document.getElementById('search-results').innerHTML = '<div class="empty">Zoeken bij alle bronnen… (kan even duren)</div>';
+  const all = $('pick-all').checked;
+  $('pick-results').innerHTML = `<div class="loading"><span class="dot pulse"></span>Zoeken bij alle bronnen… (kan even duren)</div>`;
   try {
     const res = await fetch(`/api/books/${id}/search?all=${all ? 1 : 0}`, { method:'POST' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Onbekende fout');
     if (!data.length) {
-      document.getElementById('search-results').innerHTML =
-        '<div class="empty">Niets gevonden bij de ingeschakelde bronnen.</div>';
+      $('pick-results').innerHTML = `<div class="empty sm">${icon('search')}<span>Niets gevonden bij de ingeschakelde bronnen.</span></div>`;
       return;
     }
+    // bruikbare releases eerst (stabiele volgorde)
+    pickResults = data.map((r, i) => [r, i]).sort((a, b) => ((a[0].usable === false) - (b[0].usable === false)) || (a[1] - b[1])).map(x => x[0]);
     const SRC_CLASS = { gutenberg:'free', standardebooks:'free', zlibrary:'acct', libgen:'acct' };
-    document.getElementById('search-results').innerHTML = `<div class="listbox">${data.map(r => {
+    $('pick-results').innerHTML = pickResults.map((r, i) => {
+      const bad = r.usable === false;
       const fmt = r.format === 'epub'
-        ? '<span class="badge">EPUB</span>'
-        : `<span class="badge conv">${escapeHtml((r.format||'').toUpperCase())}${icon('arrow',10)}EPUB</span>`;
+        ? '<span class="tag">EPUB</span>'
+        : `<span class="tag tag--conv">${escapeHtml((r.format || '').toUpperCase())}${icon('convert')}EPUB</span>`;
       const extra = r.kind === 'torrent'
         ? `${escapeHtml((r.download && r.download.indexer) || '')} · ${r.seeders ?? '?'} seeders`
         : escapeHtml(r.detail || '');
-      return `
-      <div class="result-item${r.usable === false ? ' dim' : ''}">
-        <div style="min-width:0;">
-          <div>${escapeHtml(r.title)} ${fmt}<span class="badge ${SRC_CLASS[r.source] || ''}">${SRC_LABELS[r.source] || r.source}</span></div>
-          <div class="meta" style="font-size:13px;margin-top:4px;">
-            ${extra}${r.size ? ' · ' + formatSize(r.size) : ''}${r.language ? ' · ' + langLabel(r.language) : ''}
-          </div>
-          ${r.usable === false ? `<div class="warn-line">${icon('warn',14)}<span>${escapeHtml(r.sane_reason || 'wordt niet automatisch gepakt')}</span></div>` : ''}
-        </div>
-        <button class="btn small${r.usable === false ? ' secondary' : ''}" onclick='grabCandidate(${JSON.stringify(r).replace(/'/g,"&#39;")})'>${icon('download',13)} Download</button>
-      </div>`;
-    }).join('')}</div>`;
+      return `<div class="rel${bad ? ' dim' : ''}"><div class="rb">
+          <div class="rt">${escapeHtml(r.title)}</div>
+          <div class="tags">${fmt}<span class="tag tag--${SRC_CLASS[r.source] || 'outline'}">${escapeHtml(SRC_LABELS[r.source] || r.source)}</span></div>
+          <div class="rm">${extra}${r.size ? ' · ' + formatSize(r.size) : ''}${r.language ? ' · ' + langLabel(r.language) : ''}</div>
+          ${bad ? `<div class="rw">${escapeHtml(r.sane_reason || 'wordt niet automatisch gepakt')}</div>` : ''}
+        </div><button class="btn btn-sm ${bad ? '' : 'btn-acc'}" onclick="grabCandidate(${i})">${icon('download', 16)}Download</button></div>`;
+    }).join('');
   } catch (e) {
-    document.getElementById('search-results').innerHTML = `<div class="msg err">${escapeHtml(e.message)}</div>`;
+    $('pick-results').innerHTML = noteHtml('err', e.message);
   }
 }
-
-async function grabCandidate(cand) {
-  const btns = document.querySelectorAll('#search-results button');
+async function grabCandidate(i) {
+  const cand = pickResults[i];
+  const btns = document.querySelectorAll('#pick-results button');
   btns.forEach(b => b.disabled = true);
   const res = await fetch(`/api/books/${currentBookId}/grab`, {
     method:'POST', headers:{'Content-Type':'application/json'},
@@ -1506,15 +1882,25 @@ async function grabCandidate(cand) {
   });
   const data = await res.json();
   btns.forEach(b => b.disabled = false);
-  if (!res.ok) { alert('Fout: ' + data.detail); return; }
-  alert(cand.kind === 'torrent' ? 'Naar qBittorrent gestuurd.' : 'Gedownload en toegevoegd aan je bibliotheek.');
-  showTab('wanted'); loadBooks();
+  if (!res.ok) {
+    $('pick-results').insertAdjacentHTML('afterbegin', noteHtml('err', 'Fout: ' + (data.detail || 'downloaden mislukt')));
+    return;
+  }
+  closeModal('pick-overlay');
+  wantedMsg('ok', cand.kind === 'torrent' ? 'Naar qBittorrent gestuurd.' : 'Gedownload en toegevoegd aan je bibliotheek.');
+  loadBooks();
 }
 
-/* ---------- Instellingen ---------- */
+/* ================= Instellingen ================= */
+function setHint(id, kind, html) {
+  const el = $(id);
+  el.className = 'hint' + (kind ? ' ' + kind : '');
+  el.innerHTML = (kind === 'ok' ? icon('check') : kind === 'bad' ? icon('alert') : '') + html;
+}
 async function loadSettings() {
   const s = await (await fetch('/api/settings')).json();
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  const set = (id, v) => { const el = $(id); if (el) el.value = v ?? ''; };
+  const chk = (id, v) => { $(id).checked = String(v) === '1' || v === true; };
   set('prowlarr_url', s.prowlarr_url);
   set('qbittorrent_url', s.qbittorrent_url);
   set('qbittorrent_username', s.qbittorrent_username);
@@ -1525,85 +1911,83 @@ async function loadSettings() {
   set('library_folder', s.library_folder || '');
   set('calibre_path', s.calibre_path || '');
   const langs = (s.reading_languages || 'en,nl').split(',');
-  document.getElementById('lang_en').checked = langs.includes('en');
-  document.getElementById('lang_nl').checked = langs.includes('nl');
-  document.getElementById('auto_download').checked = String(s.auto_download) === '1' || s.auto_download === true;
-  document.getElementById('accept_kindle').checked = String(s.accept_kindle) === '1' || s.accept_kindle === true;
-  document.getElementById('calibre_hint').innerHTML = s.calibre_found
-    ? `✓ Calibre gevonden: <code>${escapeHtml(s.calibre_found)}</code>`
-    : '⚠ Geen Calibre gevonden — installeer het van calibre-ebook.com, dan werkt converteren. Zonder Calibre blijft het epub-only.';
-  document.getElementById('embed_metadata').checked = String(s.embed_metadata) === '1' || s.embed_metadata === true;
-  document.getElementById('embed_hint').innerHTML = s.ebook_meta_found
-    ? '✓ Calibre gevonden — metadata wordt geschreven.'
-    : '⚠ Vereist Calibre (calibre-ebook.com). Zonder Calibre gebeurt er niks.';
+  $('lang_en').checked = langs.includes('en');
+  $('lang_nl').checked = langs.includes('nl');
+  chk('auto_download', s.auto_download);
+  chk('accept_kindle', s.accept_kindle);
+  chk('embed_metadata', s.embed_metadata);
+  s.calibre_found
+    ? setHint('calibre_hint', 'ok', `Calibre gevonden: <code>${escapeHtml(s.calibre_found)}</code>`)
+    : setHint('calibre_hint', 'bad', 'Geen Calibre gevonden — installeer het van calibre-ebook.com, dan werkt converteren. Zonder Calibre blijft het epub-only.');
+  s.ebook_meta_found
+    ? setHint('embed_hint', 'ok', 'Calibre gevonden — metadata wordt geschreven.')
+    : setHint('embed_hint', 'bad', 'Vereist Calibre (calibre-ebook.com). Zonder Calibre gebeurt er niks.');
   set('opds_url', s.opds_url || (location.origin + '/opds'));
   set('opds_user', s.opds_user || 'ebookarr');
-  document.getElementById('opds_password').value = '';
-  document.getElementById('opds_auth').checked = !!s.opds_password_set;
+  $('opds_password').value = '';
+  $('opds_auth').checked = !!s.opds_password_set;
   opdsAuthToggle();
-  document.getElementById('opds_hint').innerHTML = s.opds_password_set
-    ? '✓ beveiligd — vul in je leesapp deze gebruikersnaam en je wachtwoord in.'
-    : 'Zonder wachtwoord: iedereen op je netwerk kan je bibliotheek zien. Voor thuisgebruik meestal prima.';
-  document.getElementById('prowlarr_api_key').value = '';
-  document.getElementById('qbittorrent_password').value = '';
-  document.getElementById('prowlarr_api_key_hint').textContent =
-    s.prowlarr_api_key_set ? '✓ opgeslagen (laat leeg om te behouden)' : '⚠ nog niets opgeslagen';
-  document.getElementById('qbittorrent_password_hint').textContent =
-    s.qbittorrent_password_set ? '✓ opgeslagen (laat leeg om te behouden)' : '⚠ nog niets opgeslagen';
-
-  const chk = (id, v) => { document.getElementById(id).checked = String(v) === '1' || v === true; };
+  s.opds_password_set
+    ? setHint('opds_hint', 'ok', 'beveiligd — vul in je leesapp deze gebruikersnaam en je wachtwoord in.')
+    : setHint('opds_hint', '', 'Zonder wachtwoord: iedereen op je netwerk kan je bibliotheek zien. Voor thuisgebruik meestal prima.');
+  $('prowlarr_api_key').value = '';
+  $('qbittorrent_password').value = '';
+  s.prowlarr_api_key_set ? setHint('prowlarr_api_key_hint', 'ok', 'opgeslagen (laat leeg om te behouden)') : setHint('prowlarr_api_key_hint', 'bad', 'nog niets opgeslagen');
+  s.qbittorrent_password_set ? setHint('qbittorrent_password_hint', 'ok', 'opgeslagen (laat leeg om te behouden)') : setHint('qbittorrent_password_hint', 'bad', 'nog niets opgeslagen');
   chk('src_gutenberg', s.src_gutenberg); chk('src_standardebooks', s.src_standardebooks);
   chk('src_libgen', s.src_libgen); chk('src_zlibrary', s.src_zlibrary);
   set('libgen_mirror', s.libgen_mirror || '');
   set('zlib_domain', s.zlib_domain || '');
-  document.getElementById('zlib_email').value = '';
-  document.getElementById('zlib_password').value = '';
-  document.getElementById('annas_key').value = '';
-  document.getElementById('google_books_key').value = '';
-  document.getElementById('google_books_key_hint').textContent = s.google_books_key_set
-    ? '✓ opgeslagen (laat leeg om te behouden)'
-    : 'Zonder sleutel zoekt de app anoniem bij Google, met een lage limiet.';
+  $('zlib_email').value = '';
+  $('zlib_password').value = '';
+  $('annas_key').value = '';
+  $('google_books_key').value = '';
+  s.google_books_key_set
+    ? setHint('google_books_key_hint', 'ok', 'opgeslagen (laat leeg om te behouden)')
+    : setHint('google_books_key_hint', '', 'Zonder sleutel zoekt de app anoniem bij Google, met een lage limiet.');
   const active = (s.sources_enabled || []).map(x => SRC_LABELS[x] || x).join(' → ');
   const q = s.zlib_quota;
   const quotaTxt = q ? ` Vandaag gebruikt: <b>${q.used}/${q.limit}</b>${q.resets_in ? ` (reset over ${escapeHtml(q.resets_in)})` : ''}.` : '';
-  document.getElementById('zlib_hint').innerHTML =
-    (s.zlib_email_set ? '✓ Z-Library inloggegevens opgeslagen. ' : '⚠ vul e-mail + wachtwoord in om Z-Library te gebruiken. ') +
-    (active ? `Actieve volgorde: <b>${escapeHtml(active)}</b>.` : 'Geen bronnen actief.') + quotaTxt;
+  setHint('zlib_hint', s.zlib_email_set ? 'ok' : 'bad',
+    (s.zlib_email_set ? 'Z-Library inloggegevens opgeslagen. ' : 'Vul e-mail + wachtwoord in om Z-Library te gebruiken. ') +
+    (active ? `Actieve volgorde: <b>${escapeHtml(active)}</b>.` : 'Geen bronnen actief.') + quotaTxt);
+  settingsDirty = false;
+  updateSavebar();
 }
 
 function settingsPayload() {
   return {
-    prowlarr_url: document.getElementById('prowlarr_url').value.trim(),
-    prowlarr_api_key: document.getElementById('prowlarr_api_key').value,
-    qbittorrent_url: document.getElementById('qbittorrent_url').value.trim(),
-    qbittorrent_username: document.getElementById('qbittorrent_username').value.trim(),
-    qbittorrent_password: document.getElementById('qbittorrent_password').value,
-    search_interval_hours: parseInt(document.getElementById('search_interval_hours').value) || 6,
-    auto_download: document.getElementById('auto_download').checked,
-    min_seeders: parseInt(document.getElementById('min_seeders').value) || 0,
-    prowlarr_categories: document.getElementById('prowlarr_categories').value.trim(),
-    library_folder: document.getElementById('library_folder').value.trim(),
+    prowlarr_url: $('prowlarr_url').value.trim(),
+    prowlarr_api_key: $('prowlarr_api_key').value,
+    qbittorrent_url: $('qbittorrent_url').value.trim(),
+    qbittorrent_username: $('qbittorrent_username').value.trim(),
+    qbittorrent_password: $('qbittorrent_password').value,
+    search_interval_hours: parseInt($('search_interval_hours').value) || 6,
+    auto_download: $('auto_download').checked,
+    min_seeders: parseInt($('min_seeders').value) || 0,
+    prowlarr_categories: $('prowlarr_categories').value.trim(),
+    library_folder: $('library_folder').value.trim(),
     reading_languages: [
-      document.getElementById('lang_en').checked ? 'en' : '',
-      document.getElementById('lang_nl').checked ? 'nl' : '',
+      $('lang_en').checked ? 'en' : '',
+      $('lang_nl').checked ? 'nl' : '',
     ].filter(Boolean).join(',') || 'en,nl',
-    stalled_hours: parseInt(document.getElementById('stalled_hours').value) || 24,
-    accept_kindle: document.getElementById('accept_kindle').checked,
-    calibre_path: document.getElementById('calibre_path').value.trim(),
-    embed_metadata: document.getElementById('embed_metadata').checked,
-    opds_auth: document.getElementById('opds_auth').checked,
-    opds_user: document.getElementById('opds_user').value.trim() || 'ebookarr',
-    opds_password: document.getElementById('opds_password').value,
-    src_gutenberg: document.getElementById('src_gutenberg').checked,
-    src_standardebooks: document.getElementById('src_standardebooks').checked,
-    src_libgen: document.getElementById('src_libgen').checked,
-    src_zlibrary: document.getElementById('src_zlibrary').checked,
-    libgen_mirror: document.getElementById('libgen_mirror').value.trim(),
-    zlib_domain: document.getElementById('zlib_domain').value.trim(),
-    zlib_email: document.getElementById('zlib_email').value.trim(),
-    zlib_password: document.getElementById('zlib_password').value,
-    annas_key: document.getElementById('annas_key').value.trim(),
-    google_books_key: document.getElementById('google_books_key').value.trim(),
+    stalled_hours: parseInt($('stalled_hours').value) || 24,
+    accept_kindle: $('accept_kindle').checked,
+    calibre_path: $('calibre_path').value.trim(),
+    embed_metadata: $('embed_metadata').checked,
+    opds_auth: $('opds_auth').checked,
+    opds_user: $('opds_user').value.trim() || 'ebookarr',
+    opds_password: $('opds_password').value,
+    src_gutenberg: $('src_gutenberg').checked,
+    src_standardebooks: $('src_standardebooks').checked,
+    src_libgen: $('src_libgen').checked,
+    src_zlibrary: $('src_zlibrary').checked,
+    libgen_mirror: $('libgen_mirror').value.trim(),
+    zlib_domain: $('zlib_domain').value.trim(),
+    zlib_email: $('zlib_email').value.trim(),
+    zlib_password: $('zlib_password').value,
+    annas_key: $('annas_key').value.trim(),
+    google_books_key: $('google_books_key').value.trim(),
   };
 }
 async function saveSettingsQuiet() {
@@ -1611,10 +1995,12 @@ async function saveSettingsQuiet() {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(settingsPayload())
   });
+  settingsDirty = false;
 }
 async function saveSettings() {
   await saveSettingsQuiet();
-  showMsg('ok', 'Instellingen opgeslagen.');
+  const t = new Date().toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+  showMsg('ok', `Instellingen opgeslagen om ${t}.`);
   loadSettings(); loadStatus();
 }
 async function testProwlarr() {
@@ -1624,13 +2010,6 @@ async function testProwlarr() {
   showMsg(res.ok ? 'ok' : 'err', res.ok ? `Verbonden! Prowlarr ${d.version}` : d.detail);
   loadStatus();
 }
-async function testGoogle() {
-  await saveSettingsQuiet();
-  const res = await fetch('/api/settings/test-google', { method:'POST' });
-  const d = await res.json();
-  showMsg(res.ok ? 'ok' : 'err', res.ok ? (d.detail || 'Sleutel werkt.') : d.detail);
-  loadSettings();
-}
 async function testQbittorrent() {
   await saveSettingsQuiet();
   const res = await fetch('/api/settings/test-qbittorrent', { method:'POST' });
@@ -1638,59 +2017,69 @@ async function testQbittorrent() {
   showMsg(res.ok ? 'ok' : 'err', res.ok ? `Verbonden! qBittorrent ${d.version}` : d.detail);
   loadStatus();
 }
-function opdsAuthToggle() {
-  document.getElementById('opds_creds').style.display =
-    document.getElementById('opds_auth').checked ? 'flex' : 'none';
+async function testGoogle() {
+  await saveSettingsQuiet();
+  const res = await fetch('/api/settings/test-google', { method:'POST' });
+  const d = await res.json();
+  showMsg(res.ok ? 'ok' : 'err', res.ok ? (d.detail || 'Sleutel werkt.') : d.detail);
+  loadSettings();
 }
+function opdsAuthToggle() { $('opds_creds').hidden = !$('opds_auth').checked; }
 function copyOpds() {
-  const el = document.getElementById('opds_url');
+  const el = $('opds_url');
   el.select();
   navigator.clipboard?.writeText(el.value).then(
     () => showMsg('ok', 'Link gekopieerd.'),
     () => showMsg('ok', 'Selecteer en kopieer de link handmatig.'));
 }
 
-let _settingsMsgT;
+// zwevende opslaan-balk: verschijnt bij wijzigingen en bij een resultaatmelding
+let settingsDirty = false, _settingsMsgT = null, _hasSettingsMsg = false;
+function updateSavebar() {
+  $('save-state').innerHTML = settingsDirty ? `${icon('alert', 18)}Niet-opgeslagen wijzigingen` : '';
+  $('savebar').classList.toggle('show', settingsDirty || _hasSettingsMsg);
+}
 function showMsg(type, text) {
-  document.getElementById('settings-msg').innerHTML = `<div class="msg ${type}">${icon(type === 'ok' ? 'check' : 'error', 16)}<span>${escapeHtml(text)}</span></div>`;
+  $('settings-msg').innerHTML = noteHtml(type, text);
+  _hasSettingsMsg = true;
+  updateSavebar();
   clearTimeout(_settingsMsgT);
-  _settingsMsgT = setTimeout(() => {
-    const el = document.getElementById('settings-msg'); if (el) el.innerHTML = '';
+  if (type !== 'err') _settingsMsgT = setTimeout(() => {
+    $('settings-msg').innerHTML = ''; _hasSettingsMsg = false; updateSavebar();
   }, 5000);
 }
-
-/* ---------- Overlays sluiten (Esc + klik op de achtergrond) ---------- */
-document.querySelectorAll('.overlay').forEach(ov => {
-  ov.addEventListener('mousedown', e => { if (e.target === ov) ov.style.display = 'none'; });
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.querySelectorAll('.overlay').forEach(ov => { ov.style.display = 'none'; });
+document.querySelectorAll('#settings input, #settings select').forEach(el => {
+  if (el.readOnly) return;
+  const mark = () => { settingsDirty = true; updateSavebar(); };
+  el.addEventListener('input', mark);
+  el.addEventListener('change', mark);
 });
 
-/* ---------- Instellingen: subnav volgt de zichtbare sectie ---------- */
+// sectienavigatie volgt de zichtbare sectie
 (() => {
   const links = [...document.querySelectorAll('.subnav a')];
   if (!links.length) return;
   const spy = () => {
-    const panel = document.getElementById('settings');
+    const panel = $('settings');
     if (!panel || panel.offsetParent === null) return;
     let cur = links[0].getAttribute('href').slice(1);
     for (const a of links) {
-      const el = document.getElementById(a.getAttribute('href').slice(1));
-      if (el && el.getBoundingClientRect().top <= 96) cur = a.getAttribute('href').slice(1);
+      const el = $(a.getAttribute('href').slice(1));
+      if (el && el.getBoundingClientRect().top <= 120) cur = a.getAttribute('href').slice(1);
     }
     links.forEach(a => a.classList.toggle('spy', a.getAttribute('href').slice(1) === cur));
   };
   window.addEventListener('scroll', spy, { passive: true });
   const stab = document.querySelector('.tab-btn[data-tab="settings"]');
-  if (stab) stab.addEventListener('click', () => setTimeout(spy, 0));
+  if (stab) stab.addEventListener('click', () => setTimeout(spy, 50));
 })();
 
-/* ---------- Init ---------- */
-document.getElementById('book-sort').value = bookSort;
+/* ================= start ================= */
+$('book-sort').value = bookSort;
 loadBooks();
 loadStatus();
 syncPollRate();
+
 </script>
 </body>
 </html>

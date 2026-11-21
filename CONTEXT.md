@@ -460,3 +460,6 @@ HTTP 204 zonder body). Zit al in `qbittorrent.py`.
 - Gebruiker kan niet coderen — leg keuzes kort uit, geen code laten lezen
 - Alles blijft werken via `start.bat`; achtergrond via `install-task.bat`
 - Nederlandstalige UI/README/logmeldingen
+
+## Visueel herontwerp "Kaft nacht" (2026.11.21-64)
+app/static/index.html is gebouwd uit de handoff (tokens/components/icons-sprite) + eigen CSS/JS; lettertype Bricolage Grotesque in app/static/fonts/. Alle logica behouden.
