@@ -593,6 +593,8 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
       <label class="sr" for="kindle-filter">Filter</label>
       <input id="kindle-filter" class="field sm" placeholder="Filter…" oninput="renderKindle()">
       <button class="btn btn-sm" onclick="kindleSelectAll()">Alles selecteren</button>
+      <button class="btn btn-sm" id="kindle-mark-sent" onclick="markKindleSelected(true)" disabled title="Aanduiden dat de geselecteerde boeken al op je Kindle staan (er wordt niets verstuurd)">Markeer als verstuurd</button>
+      <button class="btn btn-sm" id="kindle-mark-unsent" onclick="markKindleSelected(false)" disabled title="Verstuurd-label weghalen">Markeer als niet verstuurd</button>
       <button class="btn btn-acc" id="kindle-send-sel" onclick="sendKindleSelected()" disabled><svg class="i" aria-hidden="true"><use href="#i-send"/></svg>Verstuur <span id="kindle-sel-count">0</span> geselecteerd</button>
     </div>
     <div id="kindle-list"></div>
@@ -1268,6 +1270,7 @@ function kindleShown() {
 function updateKindleSel() {
   $('kindle-sel-count').textContent = kindleSel.size;
   $('kindle-send-sel').disabled = kindleSel.size === 0;
+  $('kindle-mark-sent').disabled = $('kindle-mark-unsent').disabled = kindleSel.size === 0;
 }
 function renderKindle() {
   const box = $('kindle-list');
@@ -1291,7 +1294,7 @@ function renderKindle() {
       <div class="rmid">${sent
         ? `<span class="stk stk--done">${icon('check', 14)}Verstuurd</span><div class="cstatus">${timeAgo(sent)}</div>`
         : `<span class="stk stk--wanted">Nog niet verstuurd</span>`}</div>
-      <div class="rowacts"><button class="btn btn-sm ${sent ? '' : 'btn-acc'}" onclick="sendKindle([${b.id}], this)">${icon('send', 16)}${sent ? 'Opnieuw' : 'Verstuur'}</button></div>
+      <div class="rowacts"><button class="ib" aria-label="${sent ? 'Markeer als niet verstuurd' : 'Markeer als al verstuurd (zonder te versturen)'}: ${escapeHtml(b.title)}" title="${sent ? 'Markeer als niet verstuurd' : 'Staat al op mijn Kindle — markeer als verstuurd'}" onclick="markKindle([${b.id}], ${!sent})">${icon(sent ? 'undo' : 'check', 16)}</button><button class="btn btn-sm ${sent ? '' : 'btn-acc'}" onclick="sendKindle([${b.id}], this)">${icon('send', 16)}${sent ? 'Opnieuw' : 'Verstuur'}</button></div>
     </article>`;
   }).join('')}</div>`;
 }
@@ -1305,6 +1308,18 @@ function kindleSelectAll() {
   shown.forEach(id => all ? kindleSel.delete(id) : kindleSel.add(id));
   renderKindle();
 }
+async function markKindle(ids, sent) {
+  if (!ids.length) return;
+  const res = await fetch('/api/kindle/mark', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, sent })
+  });
+  if (!res.ok) { $('kindle-msg').innerHTML = noteHtml('err', 'Aanpassen mislukt.'); return; }
+  $('kindle-msg').innerHTML = noteHtml('ok', `${ids.length} boek${ids.length === 1 ? '' : 'en'} gemarkeerd als ${sent ? 'verstuurd' : 'niet verstuurd'}.`);
+  ids.forEach(id => kindleSel.delete(id));
+  await loadBooks();
+  renderKindle();
+}
+function markKindleSelected(sent) { markKindle([...kindleSel], sent); }
 function sendKindleSelected() { sendKindle([...kindleSel], $('kindle-send-sel')); }
 async function sendKindle(ids, btn) {
   if (!ids.length) return;

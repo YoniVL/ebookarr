@@ -371,3 +371,11 @@ def mark_kindle_sent(book_id):
     with get_conn() as conn:
         conn.execute("UPDATE books SET kindle_sent_at = CURRENT_TIMESTAMP WHERE id = ?", (book_id,))
         conn.commit()
+
+
+def set_kindle_sent(book_id, sent: bool):
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE books SET kindle_sent_at = " + ("CURRENT_TIMESTAMP" if sent else "NULL") + " WHERE id = ?",
+            (book_id,))
+        conn.commit()

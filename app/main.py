@@ -98,6 +98,11 @@ class KindleSendIn(BaseModel):
     ids: list[int]
 
 
+class KindleMarkIn(BaseModel):
+    ids: list[int]
+    sent: bool = True
+
+
 # ---------- Frontend ----------
 
 @app.get("/")
@@ -256,6 +261,15 @@ def kindle_send(payload: KindleSendIn):
         else:
             failed[bid] = err
     return {"sent": sent, "failed": failed}
+
+
+@app.post("/api/kindle/mark")
+def kindle_mark(payload: KindleMarkIn):
+    """Handmatig aanduiden dat een boek al (niet) op de Kindle staat."""
+    for i in payload.ids:
+        _get_book_or_404(i)
+        db.set_kindle_sent(i, payload.sent)
+    return {"count": len(payload.ids)}
 
 
 @app.post("/api/settings/test-qbittorrent")
