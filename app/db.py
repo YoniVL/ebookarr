@@ -16,7 +16,7 @@ BACKUP_DIR = DB_PATH.parent / "backups"
 # Instellingen die versleuteld opgeslagen worden (zie obfuscate.py)
 SECRET_KEYS = {"qbittorrent_password", "prowlarr_api_key",
                "zlib_password", "zlib_email", "annas_key", "zlib_session",
-               "opds_password", "google_books_key"}
+               "opds_password", "google_books_key", "smtp_password"}
 
 # Standaardwaarden voor nieuwe instellingen
 SETTING_DEFAULTS = {
@@ -31,6 +31,12 @@ SETTING_DEFAULTS = {
     "calibre_path": "",         # pad naar ebook-convert.exe (leeg = automatisch zoeken)
     "embed_metadata": "1",      # titel/auteur/taal/cover in het epub schrijven (Calibre)
     # Downloadbronnen (vaste volgorde; torrents/Prowlarr altijd als laatste)
+    "kindle_email": "",         # bv. naam_123@kindle.com
+    "smtp_host": "",
+    "smtp_port": "587",
+    "smtp_user": "",
+    "smtp_password": "",        # secret
+    "smtp_from": "",            # leeg = gebruikersnaam; moet bij Amazon goedgekeurd zijn
     "src_gutenberg": "1",
     "src_standardebooks": "1",
     "src_libgen": "0",       # veel ISP's (o.a. in BE) blokkeren LibGen-domeinen -> standaard uit
@@ -206,6 +212,10 @@ def _m010_book_series(conn):
     _add_column(conn, "books", "series_index REAL")
 
 
+def _m011_kindle_sent(conn):
+    _add_column(conn, "books", "kindle_sent_at TEXT")
+
+
 MIGRATIONS = [
     _m001_initial,
     _m002_book_metadata,
@@ -217,6 +227,7 @@ MIGRATIONS = [
     _m008_book_source,
     _m009_kv_cache,
     _m010_book_series,
+    _m011_kindle_sent,
 ]
 
 
@@ -355,117 +366,8 @@ def already_grabbed(book_id, guid) -> bool:
     return row is not None
 
 
-# ---------- Volgen (auteurs + reeksen) ----------
 
-def list_follows():
+def mark_kindle_sent(book_id):
     with get_conn() as conn:
-        return [dict(r) for r in conn.execute(
-            "SELECT * FROM follows ORDER BY type, name COLLATE NOCASE"
-        )]
-
-
-def add_follow(ftype: str, name: str, author: str = ""):
-    name = (name or "").strip()
-    author = (author or "").strip()
-    ftype = ftype if ftype in ("author", "series") else "author"
-    if not name:
-        return None
-    with get_conn() as conn:
-        existing = conn.execute(
-            "SELECT id FROM follows WHERE type = ? AND name = ? COLLATE NOCASE "
-            "AND COALESCE(author,'') = ?",
-            (ftype, name, author),
-        ).fetchone()
-        if existing:
-            return existing["id"]
-        cur = conn.execute(
-            "INSERT INTO follows (type, name, author) VALUES (?, ?, ?)",
-            (ftype, name, author or None),
-        )
+        conn.execute("UPDATE books SET kindle_sent_at = CURRENT_TIMESTAMP WHERE id = ?", (book_id,))
         conn.commit()
-        return cur.lastrowid
-
-
-def delete_follow(follow_id: int):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM follows WHERE id = ?", (follow_id,))
-        conn.commit()
-
-
-def touch_follow(follow_id: int, result: str):
-    with get_conn() as conn:
-        conn.execute(
-            "UPDATE follows SET last_checked = CURRENT_TIMESTAMP, last_result = ? WHERE id = ?",
-            (result, follow_id),
-        )
-        conn.commit()
-
-
-# ---------- Suggesties ----------
-
-def list_suggestions(state: str = "pending"):
-    with get_conn() as conn:
-        return [dict(r) for r in conn.execute(
-            "SELECT * FROM suggestions WHERE state = ? ORDER BY found_via, title COLLATE NOCASE",
-            (state,),
-        )]
-
-
-def count_pending_suggestions():
-    with get_conn() as conn:
-        return conn.execute(
-            "SELECT COUNT(*) FROM suggestions WHERE state = 'pending'"
-        ).fetchone()[0]
-
-
-def suggestion_exists(title, author, isbn):
-    """Al eerder gesuggereerd (in welke staat dan ook)? Vergelijkt op hoofdtitel
-    (zonder ondertitel) zodat 'Death's Domain' en 'Death's Domain: A Discworld
-    Mapp' als hetzelfde tellen."""
-    from .metadata import _norm_title, main_title
-
-    with get_conn() as conn:
-        rows = conn.execute("SELECT title, author, isbn FROM suggestions").fetchall()
-    ni = re.sub(r"[^a-z0-9]+", "", (isbn or "").lower())
-    mt = main_title(title)
-    na = _norm_title((author or "").split(",")[0])
-    for r in rows:
-        if ni and re.sub(r"[^a-z0-9]+", "", (r["isbn"] or "").lower()) == ni:
-            return True
-        if mt and main_title(r["title"]) == mt and (
-            not na or _norm_title((r["author"] or "").split(",")[0]) == na):
-            return True
-    return False
-
-
-def add_suggestion(data: dict, found_via: str):
-    with get_conn() as conn:
-        cur = conn.execute(
-            """INSERT INTO suggestions
-                   (title, author, language, isbn, cover_url, year, source_id,
-                    description, found_via)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (data.get("title"), data.get("author"), data.get("language"),
-             data.get("isbn"), data.get("cover_url"), data.get("year"),
-             data.get("source_id"), data.get("description"), found_via),
-        )
-        conn.commit()
-        return cur.lastrowid
-
-
-def set_suggestion_state(sug_id, state):
-    with get_conn() as conn:
-        conn.execute("UPDATE suggestions SET state = ? WHERE id = ?", (state, sug_id))
-        conn.commit()
-
-
-def delete_suggestion(sug_id):
-    with get_conn() as conn:
-        conn.execute("DELETE FROM suggestions WHERE id = ?", (sug_id,))
-        conn.commit()
-
-
-def get_suggestion(sug_id):
-    with get_conn() as conn:
-        row = conn.execute("SELECT * FROM suggestions WHERE id = ?", (sug_id,)).fetchone()
-        return dict(row) if row else None

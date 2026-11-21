@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import __version__, db, logsetup, metadata, opds, scheduler, services, sources
+from . import __version__, db, kindle, logsetup, metadata, opds, scheduler, services, sources
 
 logsetup.configure()
 logging.getLogger("ebookarr").info("EbookArr start - versie %s", __version__)
@@ -73,6 +73,12 @@ class SettingsIn(BaseModel):
     zlib_password: str = ""
     annas_key: str = ""
     google_books_key: str = ""
+    kindle_email: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
 
 
 class MonitoredIn(BaseModel):
@@ -84,19 +90,12 @@ class BulkDeleteIn(BaseModel):
     delete_files: bool = False
 
 
-class FollowIn(BaseModel):
-    type: str = "author"          # "author" of "series"
-    name: str
-    author: str = ""             # optioneel, om een reeks te verankeren
-
-
 class PrefLangIn(BaseModel):
     pref_language: str            # "en", "nl" of "" (auto)
 
 
-class SugBulkIn(BaseModel):
+class KindleSendIn(BaseModel):
     ids: list[int]
-    action: str                  # "accept" | "dismiss" | "restore"
 
 
 # ---------- Frontend ----------
@@ -127,7 +126,7 @@ def get_settings():
     s = db.get_all_settings()
     for k in ("qbittorrent_password", "prowlarr_api_key", "zlib_password",
               "zlib_email", "annas_key", "zlib_session", "opds_password",
-              "google_books_key"):
+              "google_books_key", "smtp_password"):
         s.pop(k, None)
     s["qbittorrent_password_set"] = bool(db.get_setting("qbittorrent_password"))
     s["prowlarr_api_key_set"] = bool(db.get_setting("prowlarr_api_key"))
@@ -135,6 +134,7 @@ def get_settings():
     s["zlib_email_set"] = bool(db.get_setting("zlib_email"))
     s["annas_key_set"] = bool(db.get_setting("annas_key"))
     s["google_books_key_set"] = bool(db.get_setting("google_books_key"))
+    s["smtp_password_set"] = bool(db.get_setting("smtp_password"))
     s["opds_password_set"] = bool(db.get_setting("opds_password"))
     s["opds_url"] = f"http://{_lan_ip()}:8686/opds"
     s["zlib_quota"] = services.zlib_quota()
@@ -198,6 +198,14 @@ def save_settings(payload: SettingsIn):
     if zlib_changed:  # gecachete Z-Library-sessie is nu mogelijk verkeerd
         db.set_setting("zlib_session", "")
 
+    db.set_setting("kindle_email", payload.kindle_email.strip())
+    db.set_setting("smtp_host", payload.smtp_host.strip())
+    db.set_setting("smtp_port", str(payload.smtp_port or 587))
+    db.set_setting("smtp_user", payload.smtp_user.strip())
+    db.set_setting("smtp_from", payload.smtp_from.strip())
+    if payload.smtp_password and payload.smtp_password != _SECRET_PLACEHOLDER:
+        db.set_setting("smtp_password", payload.smtp_password)
+
     scheduler.apply_settings()
     return {"ok": True}
 
@@ -221,6 +229,35 @@ def test_google():
     return {"ok": True, "detail": msg}
 
 
+@app.post("/api/settings/test-kindle")
+def test_kindle():
+    try:
+        return {"ok": True, "detail": kindle.test_connection()}
+    except kindle.KindleError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/kindle/send")
+def kindle_send(payload: KindleSendIn):
+    if not payload.ids:
+        raise HTTPException(status_code=400, detail="Niets geselecteerd.")
+    books = [_get_book_or_404(i) for i in payload.ids]
+    items = [(b["id"], b.get("library_path"), b["title"]) for b in books if b["status"] == "downloaded"]
+    try:
+        res = kindle.send_files(items)
+    except kindle.KindleError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    sent, failed = [], {}
+    for bid, err in res.items():
+        if err is None:
+            db.mark_kindle_sent(bid)
+            db.add_history(bid, "kindle", detail="naar Kindle gestuurd")
+            sent.append(bid)
+        else:
+            failed[bid] = err
+    return {"sent": sent, "failed": failed}
+
+
 @app.post("/api/settings/test-qbittorrent")
 def test_qbittorrent():
     try:
@@ -237,7 +274,6 @@ def status():
     return {
         **services.health(),
         "version": __version__,
-        "suggestions_pending": db.count_pending_suggestions(),
         "searching": services.search_progress(),
         "zlib_quota": services.zlib_quota(),
     }
@@ -404,85 +440,6 @@ def link_book(book_id: int, payload: LinkIn):
 
 
 # ---------- Volgen (auteurs + reeksen) ----------
-
-@app.get("/api/follows")
-def list_follows():
-    return db.list_follows()
-
-
-@app.post("/api/follows")
-def add_follow(payload: FollowIn):
-    if not payload.name.strip():
-        raise HTTPException(status_code=400, detail="Naam ontbreekt.")
-    return {"id": db.add_follow(payload.type, payload.name, payload.author)}
-
-
-@app.delete("/api/follows/{follow_id}")
-def delete_follow(follow_id: int):
-    db.delete_follow(follow_id)
-    return {"ok": True}
-
-
-@app.post("/api/follows/check")
-def check_follows():
-    return services.check_follows(trigger="handmatig")
-
-
-# ---------- Suggesties ----------
-
-@app.get("/api/suggestions")
-def list_suggestions(state: str = "pending"):
-    state = state if state in ("pending", "dismissed", "added") else "pending"
-    return db.list_suggestions(state)
-
-
-@app.post("/api/suggestions/{sug_id}/restore")
-def restore_suggestion(sug_id: int):
-    db.set_suggestion_state(sug_id, "pending")
-    return {"ok": True}
-
-
-@app.post("/api/suggestions/{sug_id}/accept")
-def accept_suggestion(sug_id: int):
-    try:
-        return services.accept_suggestion(sug_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-
-
-@app.post("/api/suggestions/{sug_id}/dismiss")
-def dismiss_suggestion(sug_id: int):
-    db.set_suggestion_state(sug_id, "dismissed")
-    return {"ok": True}
-
-
-@app.post("/api/suggestions/{sug_id}/delete")
-def delete_suggestion(sug_id: int):
-    db.delete_suggestion(sug_id)
-    return {"ok": True}
-
-
-@app.post("/api/suggestions/bulk")
-def suggestions_bulk(payload: SugBulkIn):
-    n = 0
-    for sid in payload.ids:
-        if payload.action == "accept":
-            try:
-                services.accept_suggestion(sid)
-                n += 1
-            except Exception:  # noqa: BLE001
-                pass
-        elif payload.action == "dismiss":
-            db.set_suggestion_state(sid, "dismissed")
-            n += 1
-        elif payload.action == "restore":
-            db.set_suggestion_state(sid, "pending")
-            n += 1
-        elif payload.action == "delete":
-            db.delete_suggestion(sid)
-            n += 1
-    return {"count": n}
-
 
 @app.post("/api/books/delete")
 def bulk_delete_books(payload: BulkDeleteIn):

@@ -482,8 +482,7 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
   <symbol id="i-reader" viewBox="0 0 24 24"><path d="M4 6.5c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6.5v12"/></symbol>
   <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4.5h11l3.5 3.5v11.5h-14.5zM8 4.5v5h7v-5M8 19.5v-6h8v6"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01"/></symbol>
-</svg>
-
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></symbol></svg>
 <header class="topbar">
   <a class="brand" href="#" onclick="showTab('wanted'); return false;" aria-label="EbookArr — naar Wanted">
     <span class="logo"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span>
@@ -492,7 +491,7 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
   <nav class="mainnav" aria-label="Hoofdmenu">
     <button class="pill pill-on tab-btn" data-tab="wanted" aria-current="page">Wanted</button>
     <button class="pill tab-btn" data-tab="activity">Activity<b id="act-count" hidden></b></button>
-    <button class="pill tab-btn" data-tab="authors">Volgen<span id="follow-dot" class="dot" hidden style="background:var(--done-fg);box-shadow:0 0 0 3px var(--done-bg)"></span></button>
+    <button class="pill tab-btn" data-tab="kindle">Kindle</button>
     <button class="pill tab-btn" data-tab="settings">Instellingen</button>
   </nav>
   <div class="health" id="health" aria-label="Verbindingen"></div>
@@ -579,46 +578,24 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
     <div id="activity-recent"></div>
   </section>
 
-  <!-- ================= VOLGEN ================= -->
-  <section id="authors" class="panel" aria-label="Volgen">
-    <h1 class="ptitle">Volgen</h1>
-    <p class="lead">Volg een auteur of reeks. EbookArr checkt dagelijks op nieuwe boeken (in je leestalen) en zet die als <b>suggestie</b> klaar; je beslist zelf wat je toevoegt. Een groen bolletje bij Volgen betekent dat er suggesties wachten.</p>
-    <div class="followform">
-      <label class="sr" for="follow-type">Type</label>
-      <select id="follow-type" class="field">
-        <option value="author">Auteur</option>
-        <option value="series">Reeks</option>
-      </select>
-      <label class="sr" for="follow-name">Naam</label>
-      <input id="follow-name" class="field" placeholder="bv. Terry Pratchett  /  Discworld">
-      <label class="sr" for="follow-author">Auteur van de reeks</label>
-      <input id="follow-author" class="field" placeholder="Auteur van de reeks (optioneel)" hidden>
-      <button class="btn btn-acc" onclick="addFollow()"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Volgen</button>
-      <button class="btn" onclick="checkFollows()"><svg class="i" aria-hidden="true"><use href="#i-rescan"/></svg>Nu checken</button>
-    </div>
-    <div id="authors-msg" aria-live="polite"></div>
-    <div id="follows-list" class="chips"></div>
-
-    <h2 class="sect"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg>Suggesties</h2>
-    <p class="hint" style="margin:-8px 0 16px"><b>Negeren</b> = nooit meer voorstellen. <b>✕</b> = nu uit de lijst, maar kan bij een volgende check terugkomen.</p>
-    <div class="sugtools">
-      <label class="crow"><input type="checkbox" id="hide-companions" checked onchange="loadSuggestions()"><span>Companions verbergen <span id="companion-note" class="ink-3"></span></span></label>
+  <!-- ================= KINDLE ================= -->
+  <section id="kindle" class="panel" aria-label="Kindle">
+    <h1 class="ptitle">Naar Kindle</h1>
+    <p class="lead">Stuur boeken uit je bibliotheek met één klik naar je Kindle via “Send to Kindle” (een e-mail met het epub als bijlage). Het e-mailadres van je Kindle en de mailserver stel je in bij <button class="linkbtn" onclick="document.querySelector('.tab-btn[data-tab=settings]').click();setTimeout(()=>document.getElementById('set-kindle').scrollIntoView(),100)">Instellingen → Kindle</button>.</p>
+    <div id="kindle-msg" aria-live="polite"></div>
+    <div class="filterrow">
+      <div class="chips">
+        <button class="chip chip-on kindle-filter" data-kf="all" aria-pressed="true" onclick="setKindleFilter('all')">Alles</button>
+        <button class="chip kindle-filter" data-kf="unsent" aria-pressed="false" onclick="setKindleFilter('unsent')">Nog niet verstuurd</button>
+        <button class="chip kindle-filter" data-kf="sent" aria-pressed="false" onclick="setKindleFilter('sent')">Al verstuurd</button>
+      </div>
       <span class="grow"></span>
-      <label class="sr" for="sug-sort">Sorteren</label>
-      <select id="sug-sort" class="field sm" onchange="setSugSort(this.value)">
-        <option value="title">Titel (A–Z)</option>
-        <option value="year">Jaar (oud → nieuw)</option>
-        <option value="year-desc">Jaar (nieuw → oud)</option>
-      </select>
+      <label class="sr" for="kindle-filter">Filter</label>
+      <input id="kindle-filter" class="field sm" placeholder="Filter…" oninput="renderKindle()">
+      <button class="btn btn-sm" onclick="kindleSelectAll()">Alles selecteren</button>
+      <button class="btn btn-acc" id="kindle-send-sel" onclick="sendKindleSelected()" disabled><svg class="i" aria-hidden="true"><use href="#i-send"/></svg>Verstuur <span id="kindle-sel-count">0</span> geselecteerd</button>
     </div>
-    <div id="suggestions-list"></div>
-
-    <h2 class="sect" style="margin-top:36px">
-      <button class="gtoggle" id="dismissed-toggle" aria-expanded="false" aria-controls="dismissed-list" onclick="toggleDismissed()">
-        <span id="dismissed-caret"><svg class="i" aria-hidden="true"><use href="#i-chevR"/></svg></span>Genegeerd <small id="dismissed-count"></small>
-      </button>
-    </h2>
-    <div id="dismissed-list" hidden></div>
+    <div id="kindle-list"></div>
   </section>
 
   <!-- ================= INSTELLINGEN ================= -->
@@ -630,6 +607,7 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
       <a href="#set-zoeken">Zoeken</a>
       <a href="#set-bronnen">Downloadbronnen</a>
       <a href="#set-bib">Bibliotheek</a>
+      <a href="#set-kindle">Kindle</a>
       <a href="#set-opds">Leesapps</a>
     </nav>
 
@@ -718,6 +696,25 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
         <button class="btn" type="button" onclick="testGoogle()"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Sleutel testen</button>
       </div>
       <div class="hint" id="google_books_key_hint"></div>
+    </section>
+
+    <section class="setcard" id="set-kindle">
+      <h2>Kindle (Send to Kindle)</h2>
+      <p class="sub">Elke Kindle heeft een eigen @kindle.com-adres (Amazon → Inhoud &amp; apparaten → Voorkeuren → Persoonlijke documenten). Zet daar je <b>afzenderadres</b> bij “Goedgekeurde e-mailadressen”, anders weigert Amazon de mail. Voor Gmail: gebruik <code>smtp.gmail.com</code>, poort 587 en een <i>app-wachtwoord</i>.</p>
+      <label class="fl" for="kindle_email">Kindle-e-mailadres</label>
+      <input class="field" id="kindle_email" type="email" placeholder="naam_123@kindle.com" autocomplete="off">
+      <div class="fgrid">
+        <div><label class="fl" for="smtp_host">SMTP-server</label><input class="field" id="smtp_host" placeholder="smtp.gmail.com" autocomplete="off"></div>
+        <div><label class="fl" for="smtp_port">Poort <span class="hint">(587 of 465)</span></label><input class="field" id="smtp_port" type="number" placeholder="587"></div>
+        <div><label class="fl" for="smtp_user">Gebruikersnaam</label><input class="field" id="smtp_user" autocomplete="off"></div>
+        <div><label class="fl" for="smtp_password">Wachtwoord / app-wachtwoord</label><input class="field" id="smtp_password" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen"></div>
+      </div>
+      <label class="fl" for="smtp_from">Afzenderadres <span class="hint">(leeg = gebruikersnaam)</span></label>
+      <div class="frow">
+        <input class="field" id="smtp_from" type="email" autocomplete="off">
+        <button class="btn" type="button" onclick="testKindle()"><svg class="i" aria-hidden="true"><use href="#i-server"/></svg>Verbinding testen</button>
+      </div>
+      <div class="hint" id="smtp_hint"></div>
     </section>
 
     <section class="setcard" id="set-opds">
@@ -898,7 +895,7 @@ let activityTimer = null;
 document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
   showTab(b.dataset.tab);
   if (b.dataset.tab === 'settings') loadSettings();
-  if (b.dataset.tab === 'authors') loadAuthors();
+  if (b.dataset.tab === 'kindle') loadKindle();
   clearInterval(activityTimer);
   if (b.dataset.tab === 'activity') {
     loadActivity();
@@ -994,7 +991,6 @@ async function loadStatus() {
     }
     $('health').title = `Laatst gezocht: ${last} · v${s.version || '?'}`;
     $('health').innerHTML = chip('Prowlarr', s.prowlarr) + chip('qBittorrent', s.qbittorrent) + zlChip + searchChip;
-    $('follow-dot').hidden = !(s.suggestions_pending > 0);
   } catch (e) { /* stil */ }
 }
 
@@ -1237,191 +1233,100 @@ async function rescanLibrary() {
   loadBooks();
 }
 
-/* ================= Volgen ================= */
-$('follow-type').addEventListener('change', e => {
-  $('follow-author').hidden = e.target.value !== 'series';
-});
-function loadAuthors() { loadFollows(); loadSuggestions(); }
+/* ================= Kindle ================= */
+let kindleFilter = 'all';
+let kindleSel = new Set();
+let kindleConfigured = false;
 
-async function loadFollows() {
-  const list = $('follows-list');
-  const follows = await (await fetch('/api/follows')).json();
-  if (!follows.length) {
-    list.innerHTML = `<div class="empty sm" style="width:100%">${icon('user')}<span>Je volgt nog niemand. Voeg hierboven een auteur of reeks toe.</span></div>`;
-    return;
-  }
-  list.innerHTML = follows.map(f => {
-    const tip = (f.last_checked ? 'laatst gecheckt: ' + timeAgo(f.last_checked) : 'nog niet gecheckt') + (f.last_result ? ' · ' + f.last_result : '');
-    return `<span class="fchip" title="${escapeHtml(tip)}">${icon(f.type === 'series' ? 'layers' : 'user', 18)}${escapeHtml(f.name)}
-      ${f.author ? `<small>(${escapeHtml(f.author)})</small>` : ''}
-      <button class="ib" aria-label="Niet meer volgen: ${escapeHtml(f.name)}" onclick="deleteFollow(${f.id})">${icon('x', 16)}</button></span>`;
-  }).join('');
-}
-async function addFollow() {
-  const type = $('follow-type').value;
-  const name = $('follow-name').value.trim();
-  const author = $('follow-author').value.trim();
-  if (!name) { $('follow-name').focus(); return; }
-  await fetch('/api/follows', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ type, name, author })
+function setKindleFilter(f) {
+  kindleFilter = f;
+  document.querySelectorAll('.kindle-filter').forEach(b => {
+    const on = b.dataset.kf === f; b.classList.toggle('chip-on', on); b.setAttribute('aria-pressed', on);
   });
-  $('follow-name').value = '';
-  $('follow-author').value = '';
-  setNote('authors-msg', 'ok', `"${name}" toegevoegd. Klik "Nu checken" of wacht op de dagelijkse controle.`);
-  loadFollows();
+  renderKindle();
 }
-async function deleteFollow(id) {
-  await fetch(`/api/follows/${id}`, { method:'DELETE' });
-  loadFollows();
+async function loadKindle() {
+  try {
+    const s = await (await fetch('/api/settings')).json();
+    kindleConfigured = !!(s.kindle_email && s.smtp_host);
+  } catch (e) { /* stil */ }
+  await loadBooks();
+  renderKindle();
 }
-async function checkFollows() {
-  setNote('authors-msg', 'info', 'Bezig met checken…');
-  const d = await (await fetch('/api/follows/check', { method:'POST' })).json();
-  setNote('authors-msg', 'ok', `${d.checked} gecheckt, ${d.suggested} nieuwe suggestie(s).`);
-  loadFollows(); loadSuggestions(); loadStatus();
+function kindleBooks() {
+  return _allBooks.filter(b => b.status === 'downloaded' && b.library_path);
 }
-
-/* --- suggesties: gegroepeerd per follow, 20 per pagina --- */
-const PER_PAGE = 20;
-let sugData = [], dismData = [];
-let sugPage = {}, dismPage = {};
-let sugCollapsed = {}, dismCollapsed = {};
-let sugSort = (() => { try { return localStorage.getItem('sugSort') || 'title'; } catch (e) { return 'title'; } })();
-
-function sortSuggestions(list) {
-  const byTitle = (a, b) => (a.title || '').localeCompare(b.title || '', 'nl', { sensitivity: 'base' });
-  const arr = list.slice();
-  if (sugSort === 'year') arr.sort((a, b) => (a.year || 9999) - (b.year || 9999) || byTitle(a, b));
-  else if (sugSort === 'year-desc') arr.sort((a, b) => (b.year || 0) - (a.year || 0) || byTitle(a, b));
-  else arr.sort(byTitle);
-  return arr;
+function kindleShown() {
+  const q = ($('kindle-filter').value || '').trim().toLowerCase();
+  let list = kindleBooks();
+  if (kindleFilter === 'unsent') list = list.filter(b => !b.kindle_sent_at);
+  if (kindleFilter === 'sent') list = list.filter(b => b.kindle_sent_at);
+  if (q) list = list.filter(b => (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q) ||
+    (b.series || '').toLowerCase().includes(q));
+  return sortBooks(list);
 }
-function setSugSort(v) {
-  sugSort = v;
-  try { localStorage.setItem('sugSort', v); } catch (e) {}
-  renderGroups('suggestions-list', sugData, false);
-  if (dismissedOpen) renderGroups('dismissed-list', dismData, true);
+function updateKindleSel() {
+  $('kindle-sel-count').textContent = kindleSel.size;
+  $('kindle-send-sel').disabled = kindleSel.size === 0;
 }
-function suggestionCard(s, dismissed) {
-  return `<article class="card" data-sug="${s.id}">
-    <div class="cov">${coverHtml(s)}</div>
-    <div><div class="ctitle" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</div>
-      <div class="cby">${escapeHtml(s.author || '')}${s.year ? ' · ' + s.year : ''}</div></div>
-    ${s.language ? `<div class="tags"><span class="tag">${langLabel(s.language)}</span></div>` : ''}
-    <div class="sbtns">
-      <button class="btn btn-acc btn-sm" onclick="sugAction(${s.id},'accept')">Toevoegen</button>
-      ${dismissed
-        ? `<button class="btn btn-sm" onclick="sugAction(${s.id},'restore')">Terugzetten</button>`
-        : `<button class="btn btn-sm" onclick="sugAction(${s.id},'dismiss')" title="Nooit meer voorstellen">Negeren</button>`}
-      <button class="ib ib-sm ib-danger" aria-label="Uit de lijst halen: ${escapeHtml(s.title)}" title="Uit de lijst halen (kan bij een volgende check terugkomen)" onclick="sugAction(${s.id},'delete')">${icon('x')}</button>
-    </div></article>`;
+function renderKindle() {
+  const box = $('kindle-list');
+  if (!box) return;
+  if (!kindleConfigured && !$('kindle-msg').innerHTML)
+    $('kindle-msg').innerHTML = noteHtml('warn', 'Kindle is nog niet ingesteld: vul je Kindle-adres en mailserver in bij Instellingen → Kindle.');
+  const all = kindleBooks();
+  kindleSel.forEach(id => { if (!all.find(b => b.id === id)) kindleSel.delete(id); });
+  const list = kindleShown();
+  updateKindleSel();
+  if (!all.length) { box.innerHTML = `<div class="empty">${icon('book')}<span>Er staan nog geen boeken in je bibliotheek.</span></div>`; return; }
+  if (!list.length) { box.innerHTML = `<div class="empty">${icon('filter')}<span>Geen boeken in deze weergave.</span></div>`; return; }
+  box.innerHTML = `<div class="grid rows" role="list">${list.map(b => {
+    const sel = kindleSel.has(b.id);
+    const sent = b.kindle_sent_at;
+    return `<article class="card" role="listitem">
+      <span class="rowcbx"><button class="cbx ${sel ? 'cbx-on' : ''}" role="checkbox" aria-checked="${sel}" aria-label="Selecteer ${escapeHtml(b.title)}" onclick="toggleKindleOne(${b.id})">${sel ? icon('check', 16) : ''}</button></span>
+      <div class="cov">${coverHtml(b, true)}</div>
+      <div class="rinfo"><div class="ctitle" title="${escapeHtml(b.title)}" style="-webkit-line-clamp:1">${escapeHtml(b.title)}</div>
+        <div class="cby">${escapeHtml(b.author || 'onbekende auteur')}${b.year ? ' · ' + b.year : ''}</div>${tagsHtml({ ...b, status: 'downloaded' })}</div>
+      <div class="rmid">${sent
+        ? `<span class="stk stk--done">${icon('check', 14)}Verstuurd</span><div class="cstatus">${timeAgo(sent)}</div>`
+        : `<span class="stk stk--wanted">Nog niet verstuurd</span>`}</div>
+      <div class="rowacts"><button class="btn btn-sm ${sent ? '' : 'btn-acc'}" onclick="sendKindle([${b.id}], this)">${icon('send', 16)}${sent ? 'Opnieuw' : 'Verstuur'}</button></div>
+    </article>`;
+  }).join('')}</div>`;
 }
-
-const COMPANION_RE = /\b(diary|dagboek|journal|calendar|kalender|almanac|almanak|annual|yearbook|jaarboek|postcard|sticker|colou?ring book|kleurboek|\bquiz\b|\bmapp?\b|\batlas\b|companion|pop-?up|papercraft|the art of|the making of|guide to the|encyclop[ae]dia|fools.? guild|unseen university|pocket book|activity book)\b/i;
-function isCompanion(s) { return COMPANION_RE.test(s.title || ''); }
-function groupBy(items) {
-  const g = {};
-  items.forEach(s => { (g[s.found_via || 'overig'] ||= []).push(s); });
-  return g;
+function toggleKindleOne(id) {
+  if (kindleSel.has(id)) kindleSel.delete(id); else kindleSel.add(id);
+  renderKindle();
 }
-function groupName(k) { return k.replace(/^reeks: /, 'Reeks · ').replace(/^auteur: /, 'Auteur · '); }
-
-function renderGroups(containerId, items, dismissed) {
-  const container = $(containerId);
-  const groups = groupBy(items);
-  const keys = Object.keys(groups).sort();
-  if (!keys.length) {
-    container.innerHTML = `<div class="empty sm">${icon('bell')}<span>${dismissed ? 'Niets genegeerd.' : 'Geen openstaande suggesties.'}</span></div>`;
-    return;
-  }
-  const pageState = dismissed ? dismPage : sugPage;
-  const collapsed = dismissed ? dismCollapsed : sugCollapsed;
-  const w = dismissed ? 'd' : 's';
-  container.innerHTML = keys.map(k => {
-    const list = sortSuggestions(groups[k]);
-    const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
-    const pg = Math.min(pageState[k] || 0, pages - 1);
-    const isCol = !!collapsed[k];
-    const kEsc = escapeHtml(k.replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
-    const slice = list.slice(pg * PER_PAGE, pg * PER_PAGE + PER_PAGE);
-    return `<div class="group">
-      <div class="ghead">
-        <button class="gtoggle" aria-expanded="${!isCol}" onclick="toggleGroup('${w}','${kEsc}')">${icon(isCol ? 'chevR' : 'chevD', 22)}${escapeHtml(groupName(k))}
-          <small>${list.length} boek${list.length === 1 ? '' : 'en'}</small></button>
-        <div class="gactions">
-          <button class="btn btn-sm btn-acc" onclick="groupAction('${kEsc}',${dismissed},'accept')">Alles toevoegen</button>
-          <button class="btn btn-sm" onclick="groupAction('${kEsc}',${dismissed},'${dismissed ? 'restore' : 'dismiss'}')">${dismissed ? 'Alles terugzetten' : 'Alles negeren'}</button>
-          <button class="btn btn-sm btn-danger" onclick="groupAction('${kEsc}',${dismissed},'delete')">Alles verwijderen</button>
-        </div>
-      </div>
-      ${isCol ? '' : `<div class="gbody"><div class="sugrid" role="list">${slice.map(s => suggestionCard(s, dismissed)).join('')}</div>
-        ${pages > 1 ? `<div class="pager">
-          <button class="btn btn-sm" ${pg === 0 ? 'disabled' : ''} onclick="pageGroup('${w}','${kEsc}',-1)">${icon('chevL', 16)}Vorige</button>
-          <span>pagina ${pg + 1} / ${pages}</span>
-          <button class="btn btn-sm" ${pg >= pages - 1 ? 'disabled' : ''} onclick="pageGroup('${w}','${kEsc}',1)">Volgende${icon('chevR', 16)}</button>
-        </div>` : ''}</div>`}
-    </div>`;
-  }).join('');
+function kindleSelectAll() {
+  const shown = kindleShown().map(b => b.id);
+  const all = shown.length && shown.every(id => kindleSel.has(id));
+  shown.forEach(id => all ? kindleSel.delete(id) : kindleSel.add(id));
+  renderKindle();
 }
-function toggleGroup(which, key) {
-  const c = which === 'd' ? dismCollapsed : sugCollapsed;
-  c[key] = !c[key];
-  which === 'd' ? renderGroups('dismissed-list', dismData, true) : renderGroups('suggestions-list', sugData, false);
-}
-function pageGroup(which, key, delta) {
-  const p = which === 'd' ? dismPage : sugPage;
-  p[key] = Math.max(0, (p[key] || 0) + delta);
-  which === 'd' ? renderGroups('dismissed-list', dismData, true) : renderGroups('suggestions-list', sugData, false);
-}
-async function loadSuggestions() {
-  const sel = $('sug-sort');
-  if (sel) sel.value = sugSort;
-  const raw = await (await fetch('/api/suggestions')).json();
-  const hide = $('hide-companions')?.checked;
-  sugData = hide ? raw.filter(s => !isCompanion(s)) : raw;
-  const hidden = raw.length - sugData.length;
-  renderGroups('suggestions-list', sugData, false);
-  const note = $('companion-note');
-  if (note) note.textContent = (hide && hidden) ? `(${hidden} verborgen)` : '';
-  loadDismissedCount();
-}
-async function loadDismissedCount() {
-  const d = await (await fetch('/api/suggestions?state=dismissed')).json();
-  $('dismissed-count').textContent = `${d.length}`;
-}
-let dismissedOpen = false;
-async function refreshDismissed() {
-  loadDismissedCount();
-  if (!dismissedOpen) return;
-  dismData = await (await fetch('/api/suggestions?state=dismissed')).json();
-  renderGroups('dismissed-list', dismData, true);
-}
-function toggleDismissed() {
-  dismissedOpen = !dismissedOpen;
-  $('dismissed-caret').innerHTML = icon(dismissedOpen ? 'chevD' : 'chevR', 22);
-  $('dismissed-toggle').setAttribute('aria-expanded', dismissedOpen);
-  $('dismissed-list').hidden = !dismissedOpen;
-  refreshDismissed();
-}
-async function sugAction(id, action) {
-  await fetch(`/api/suggestions/${id}/${action}`, { method:'POST' });
-  loadSuggestions(); loadStatus(); refreshDismissed();
-  if (action === 'accept') loadBooks();
-}
-async function groupAction(key, dismissed, action) {
-  const src = dismissed ? dismData : sugData;
-  const ids = src.filter(s => (s.found_via || 'overig') === key).map(s => s.id);
+function sendKindleSelected() { sendKindle([...kindleSel], $('kindle-send-sel')); }
+async function sendKindle(ids, btn) {
   if (!ids.length) return;
-  const past = { accept:'toegevoegd', dismiss:'genegeerd', restore:'teruggezet', delete:'verwijderd' }[action];
-  if (ids.length > 3 && !confirm(`${ids.length} boeken ${past}?`)) return;
-  const d = await (await fetch('/api/suggestions/bulk', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ ids, action })
-  })).json();
-  setNote('authors-msg', 'ok', `${d.count} ${past}.`);
-  loadSuggestions(); loadStatus(); refreshDismissed();
-  if (action === 'accept') loadBooks();
+  if (btn) btn.disabled = true;
+  $('kindle-msg').innerHTML = noteHtml('info', ids.length === 1 ? 'Versturen…' : `${ids.length} boeken versturen…`);
+  try {
+    const res = await fetch('/api/kindle/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids })
+    });
+    const d = await res.json();
+    if (!res.ok) { $('kindle-msg').innerHTML = noteHtml('err', d.detail || 'Versturen mislukt.'); return; }
+    const failed = Object.entries(d.failed || {});
+    const sentN = (d.sent || []).length;
+    let msg = sentN ? `${sentN} boek${sentN === 1 ? '' : 'en'} naar je Kindle gestuurd — het kan een paar minuten duren voor ze verschijnen.` : '';
+    if (failed.length) msg += (msg ? ' ' : '') + failed.map(([id, e]) => `“${(booksById[id] || {}).title || id}”: ${e}`).join(' · ');
+    $('kindle-msg').innerHTML = noteHtml(failed.length ? 'err' : 'ok', msg || 'Niets verstuurd.');
+    (d.sent || []).forEach(id => kindleSel.delete(id));
+    await loadBooks();
+    renderKindle();
+  } catch (e) {
+    $('kindle-msg').innerHTML = noteHtml('err', 'Fout: ' + e.message);
+  } finally { if (btn) btn.disabled = false; }
 }
 
 /* ================= Wanted: de boekenlijst ================= */
@@ -1942,6 +1847,10 @@ async function loadSettings() {
   $('zlib_password').value = '';
   $('annas_key').value = '';
   $('google_books_key').value = '';
+  set('kindle_email', s.kindle_email); set('smtp_host', s.smtp_host); set('smtp_port', s.smtp_port || 587);
+  set('smtp_user', s.smtp_user); set('smtp_from', s.smtp_from); $('smtp_password').value = '';
+  s.smtp_password_set ? setHint('smtp_hint', 'ok', 'wachtwoord opgeslagen (laat leeg om te behouden)') : setHint('smtp_hint', '', 'Nog niets ingesteld.');
+  kindleConfigured = !!(s.kindle_email && s.smtp_host);
   s.google_books_key_set
     ? setHint('google_books_key_hint', 'ok', 'opgeslagen (laat leeg om te behouden)')
     : setHint('google_books_key_hint', '', 'Zonder sleutel zoekt de app anoniem bij Google, met een lage limiet.');
@@ -1988,6 +1897,12 @@ function settingsPayload() {
     zlib_password: $('zlib_password').value,
     annas_key: $('annas_key').value.trim(),
     google_books_key: $('google_books_key').value.trim(),
+    kindle_email: $('kindle_email').value.trim(),
+    smtp_host: $('smtp_host').value.trim(),
+    smtp_port: parseInt($('smtp_port').value) || 587,
+    smtp_user: $('smtp_user').value.trim(),
+    smtp_password: $('smtp_password').value,
+    smtp_from: $('smtp_from').value.trim(),
   };
 }
 async function saveSettingsQuiet() {
@@ -2022,6 +1937,13 @@ async function testGoogle() {
   const res = await fetch('/api/settings/test-google', { method:'POST' });
   const d = await res.json();
   showMsg(res.ok ? 'ok' : 'err', res.ok ? (d.detail || 'Sleutel werkt.') : d.detail);
+  loadSettings();
+}
+async function testKindle() {
+  await saveSettingsQuiet();
+  const res = await fetch('/api/settings/test-kindle', { method:'POST' });
+  const d = await res.json();
+  showMsg(res.ok ? 'ok' : 'err', res.ok ? d.detail : d.detail);
   loadSettings();
 }
 function opdsAuthToggle() { $('opds_creds').hidden = !$('opds_auth').checked; }

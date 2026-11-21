@@ -1,0 +1,123 @@
+"""Boeken naar de Kindle sturen via 'Send to Kindle' per e-mail.
+
+Amazon geeft elke Kindle een eigen @kindle.com-adres. Een mail met het epub als
+bijlage (vanaf een goedgekeurd afzenderadres) komt vanzelf op het toestel.
+We versturen via een gewone SMTP-server (bv. Gmail met een app-wachtwoord).
+"""
+import logging
+import mimetypes
+import smtplib
+import ssl
+from email.message import EmailMessage
+from pathlib import Path
+
+from . import db
+
+log = logging.getLogger("ebookarr.kindle")
+
+MAX_BYTES = 50 * 1024 * 1024   # limiet van Amazon per mail
+OK_EXT = {".epub", ".pdf", ".docx", ".txt", ".rtf", ".html"}
+
+
+class KindleError(Exception):
+    pass
+
+
+def config():
+    def g(k, d=""):
+        return db.get_setting(k) or d
+
+    try:
+        port = int(g("smtp_port", "587") or 587)
+    except ValueError:
+        port = 587
+    return {
+        "to": g("kindle_email").strip(),
+        "host": g("smtp_host").strip(),
+        "port": port,
+        "user": g("smtp_user").strip(),
+        "password": g("smtp_password"),
+        "sender": g("smtp_from").strip() or g("smtp_user").strip(),
+    }
+
+
+def _check(cfg):
+    if not cfg["to"] or "@" not in cfg["to"]:
+        raise KindleError("Vul eerst je Kindle-e-mailadres in (bv. naam_123@kindle.com).")
+    if not cfg["host"] or not cfg["sender"]:
+        raise KindleError("Vul eerst de SMTP-server en het afzenderadres in.")
+
+
+def _connect(cfg):
+    ctx = ssl.create_default_context()
+    try:
+        if cfg["port"] == 465:
+            smtp = smtplib.SMTP_SSL(cfg["host"], cfg["port"], timeout=30, context=ctx)
+        else:
+            smtp = smtplib.SMTP(cfg["host"], cfg["port"], timeout=30)
+            smtp.ehlo()
+            smtp.starttls(context=ctx)
+            smtp.ehlo()
+        if cfg["user"]:
+            smtp.login(cfg["user"], cfg["password"])
+        return smtp
+    except smtplib.SMTPAuthenticationError as e:
+        raise KindleError("Inloggen bij de mailserver mislukt — controleer gebruikersnaam en "
+                          "(app-)wachtwoord.") from e
+    except (OSError, smtplib.SMTPException) as e:
+        raise KindleError(f"Mailserver niet bereikbaar: {e}") from e
+
+
+def test_connection():
+    cfg = config()
+    _check(cfg)
+    smtp = _connect(cfg)
+    try:
+        smtp.quit()
+    except Exception:  # noqa: BLE001
+        pass
+    return f"Verbonden met {cfg['host']}."
+
+
+def send_files(items):
+    """items: lijst van (book_id, path, title). Eén mail per boek.
+    Geeft {book_id: None | foutmelding}."""
+    cfg = config()
+    _check(cfg)
+    results = {}
+    smtp = _connect(cfg)
+    try:
+        for book_id, path, title in items:
+            p = Path(path) if path else None
+            if not p or not p.is_file():
+                results[book_id] = "bestand niet gevonden"
+                continue
+            if p.suffix.lower() not in OK_EXT:
+                results[book_id] = f"{p.suffix} wordt door Kindle niet geaccepteerd (epub wel)"
+                continue
+            if p.stat().st_size > MAX_BYTES:
+                results[book_id] = "bestand groter dan 50 MB"
+                continue
+            msg = EmailMessage()
+            msg["From"] = cfg["sender"]
+            msg["To"] = cfg["to"]
+            msg["Subject"] = title or p.stem
+            msg.set_content("Verstuurd door EbookArr.")
+            ctype = mimetypes.guess_type(p.name)[0] or "application/octet-stream"
+            if p.suffix.lower() == ".epub":
+                ctype = "application/epub+zip"
+            main, sub = ctype.split("/", 1)
+            msg.add_attachment(p.read_bytes(), maintype=main, subtype=sub, filename=p.name)
+            try:
+                smtp.send_message(msg)
+                results[book_id] = None
+                log.info("Naar Kindle gestuurd: %s", p.name)
+            except (OSError, smtplib.SMTPException) as e:
+                results[book_id] = f"verzenden mislukt: {e}"
+                log.warning("Kindle-verzending mislukt voor %s: %s", p.name, e)
+    finally:
+        try:
+            smtp.quit()
+        except Exception:  # noqa: BLE001
+            pass
+    return results
