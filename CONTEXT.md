@@ -468,3 +468,5 @@ app/static/index.html is gebouwd uit de handoff (tokens/components/icons-sprite)
 Het tabblad Volgen (auteurs/reeksen volgen + suggesties) is verwijderd (routes, scheduler-job en services-code weg; tabellen follows/suggestions blijven ongemoeid in de DB). Nieuw: tabblad Kindle (app/kindle.py): boeken uit de bibliotheek per mail naar het @kindle.com-adres sturen via SMTP (instellingen: kindle_email, smtp_host/port/user/password/from; wachtwoord versleuteld). Endpoints: POST /api/kindle/send {ids}, POST /api/settings/test-kindle. Kolom books.kindle_sent_at (migratie m011) onthoudt wat al verstuurd is.
 
 Kindle: handmatig markeren als (niet) verstuurd via POST /api/kindle/mark {ids, sent} (knoppen op de Kindle-tab).
+
+Gegevens aanpassen: POST /api/books/{id}/metadata (services.update_book_metadata) past titel/auteur/jaar/reeks/deel/taal/ISBN aan, schrijft ze in het epub (Calibre) en hernoemt het bestand volgens het vaste patroon. UI: potlood-icoon op de kaart.

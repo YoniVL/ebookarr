@@ -1459,6 +1459,95 @@ def link_book_to_file(book_id: int, path: str):
     return {"id": book_id, "library_path": str(p), "freed": freed}
 
 
+# ---------- Metadata van een boek handmatig aanpassen ----------
+
+def update_book_metadata(book_id: int, fields: dict):
+    """Pas titel/auteur/jaar/reeks/taal/ISBN aan. Staat het boek al in de
+    bibliotheek, dan worden de gegevens ook in het epub geschreven en wordt het
+    bestand hernoemd volgens het vaste patroon. Geeft het bijgewerkte boek terug
+    (+ 'note' met wat er met het bestand gebeurde)."""
+    with db.get_conn() as conn:
+        row = conn.execute("SELECT * FROM books WHERE id = ?", (book_id,)).fetchone()
+    if not row:
+        raise ValueError("Boek niet gevonden.")
+    book = dict(row)
+
+    title = (fields.get("title") or "").strip()
+    if not title:
+        raise ValueError("Titel mag niet leeg zijn.")
+    author = (fields.get("author") or "").strip()
+
+    def to_int(v):
+        v = ("" if v is None else str(v)).strip()
+        if not v:
+            return None
+        try:
+            n = int(float(v))
+        except ValueError as e:
+            raise ValueError(f"'{v}' is geen geldig jaar.") from e
+        if not 1000 <= n <= 2100:
+            raise ValueError("Jaar moet tussen 1000 en 2100 liggen.")
+        return n
+
+    def to_float(v):
+        v = ("" if v is None else str(v)).strip().replace(",", ".")
+        if not v:
+            return None
+        try:
+            return float(v)
+        except ValueError as e:
+            raise ValueError(f"'{v}' is geen geldig reeksnummer.") from e
+
+    series = (fields.get("series") or "").strip() or None
+    lang = (fields.get("language") or "").strip().lower()
+    if lang not in ("", "en", "nl"):
+        raise ValueError("Taal moet Engels of Nederlands zijn.")
+    new = {
+        "title": title, "author": author,
+        "year": to_int(fields.get("year")),
+        "series": series,
+        "series_index": to_float(fields.get("series_index")) if series else None,
+        "language": lang or None,
+        "isbn": (fields.get("isbn") or "").strip() or None,
+    }
+    with db.get_conn() as conn:
+        conn.execute(
+            "UPDATE books SET title=?, author=?, year=?, series=?, series_index=?, "
+            "language=?, isbn=? WHERE id=?",
+            (new["title"], new["author"], new["year"], new["series"], new["series_index"],
+             new["language"], new["isbn"], book_id))
+        conn.commit()
+    book.update(new)
+
+    note = ""
+    path = book.get("library_path")
+    if path and Path(path).is_file():
+        p = Path(path)
+        try:
+            _embed_metadata(book, p)
+            note = "bestand bijgewerkt"
+        except Exception as e:  # noqa: BLE001
+            log.warning("Boek %s: metadata schrijven mislukt: %s", book_id, e)
+            note = "gegevens opgeslagen, maar niet in het bestand kunnen schrijven"
+        target = p.with_name(_filename_for(book, p.suffix))
+        if target != p:
+            if target.exists():
+                note += f"; hernoemen overgeslagen ('{target.name}' bestaat al)"
+            else:
+                try:
+                    p.rename(target)
+                    with db.get_conn() as conn:
+                        conn.execute("UPDATE books SET library_path=? WHERE library_path=?",
+                                     (str(target), str(p)))
+                        conn.commit()
+                    book["library_path"] = str(target)
+                    note += f"; hernoemd naar '{target.name}'"
+                except OSError as e:
+                    note += f"; hernoemen mislukt: {e}"
+    db.add_history(book_id, "edit", detail="metadata handmatig aangepast")
+    return {**book, "note": note}
+
+
 # ---------- Activity ----------
 
 def activity():

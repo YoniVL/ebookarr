@@ -441,6 +441,10 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
   .health{margin-left:0;justify-content:flex-start}
 }
 
+/* 5 acties passen in de pil bij de smalste kaartbreedte */
+.acts .ib{width:28px;height:28px}
+.acts{gap:0}
+
 </style>
 </head>
 <body>
@@ -485,7 +489,7 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
   <symbol id="i-reader" viewBox="0 0 24 24"><path d="M4 6.5c3-1.5 5.5-1.5 8 0 2.5-1.5 5-1.5 8 0v12c-3-1.5-5.5-1.5-8 0-2.5-1.5-5-1.5-8 0zM12 6.5v12"/></symbol>
   <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4.5h11l3.5 3.5v11.5h-14.5zM8 4.5v5h7v-5M8 19.5v-6h8v6"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01"/></symbol>
-<symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></symbol></svg>
+<symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></symbol><symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol></svg>
 <header class="topbar">
   <a class="brand" href="#" onclick="showTab('wanted'); return false;" aria-label="EbookArr — naar Wanted">
     <span class="logo"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span>
@@ -774,6 +778,36 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
     </div>
     <div id="link-list" class="dscroll"></div>
     <div class="dfoot"><button class="btn" onclick="closeModal('link-overlay')">Sluiten</button></div>
+  </div>
+</div>
+
+<div id="edit-overlay" class="overlay" hidden>
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+    <div class="dhead">
+      <div class="grow"><h2 id="edit-title">Gegevens aanpassen</h2><p id="edit-sub" style="margin-top:8px"></p></div>
+      <button class="ib ib-flat" aria-label="Sluiten" onclick="closeModal('edit-overlay')"><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="dscroll">
+      <div id="edit-msg" aria-live="polite"></div>
+      <label class="fl" for="edit_title">Titel</label>
+      <input class="field" id="edit_title" autocomplete="off">
+      <label class="fl" for="edit_author">Auteur</label>
+      <input class="field" id="edit_author" autocomplete="off">
+      <div class="fgrid">
+        <div><label class="fl" for="edit_year">Jaar van uitgave <span class="hint">(eerste uitgave)</span></label><input class="field" id="edit_year" inputmode="numeric" autocomplete="off"></div>
+        <div><label class="fl" for="edit_language">Taal</label>
+          <select class="field" id="edit_language"><option value="en">Engels</option><option value="nl">Nederlands</option><option value="">Onbekend</option></select></div>
+        <div><label class="fl" for="edit_series">Reeks</label><input class="field" id="edit_series" autocomplete="off"></div>
+        <div><label class="fl" for="edit_series_index">Deel in de reeks</label><input class="field" id="edit_series_index" inputmode="decimal" placeholder="bv. 3" autocomplete="off"></div>
+      </div>
+      <label class="fl" for="edit_isbn">ISBN</label>
+      <input class="field" id="edit_isbn" autocomplete="off">
+      <p class="hint" id="edit-file-hint" style="margin-top:16px"></p>
+    </div>
+    <div class="dfoot">
+      <button class="btn" onclick="closeModal('edit-overlay')">Annuleren</button>
+      <button class="btn btn-acc" id="edit-save" onclick="saveEdit()"><svg class="i" aria-hidden="true"><use href="#i-save"/></svg>Opslaan</button>
+    </div>
   </div>
 </div>
 
@@ -1532,6 +1566,7 @@ function actionBtns(b, sz) {
       : `<button class="ib" aria-label="${b.status === 'failed' ? 'Opnieuw zoeken' : 'Nu zoeken'}: ${t}" title="${b.status === 'failed' ? 'Opnieuw zoeken' : 'Nu zoeken'} — beste epub meteen ophalen" onclick="grabBest(${b.id}, this)">${icon(b.status === 'failed' ? 'rescan' : 'search', sz)}</button>`);
   }
   parts.push(`<button class="ib" aria-label="Kies zelf: ${t}" title="Kies zelf — een release handmatig kiezen" onclick="searchBook(${b.id})">${icon('pick', sz)}</button>`);
+  parts.push(`<button class="ib" aria-label="Gegevens aanpassen: ${t}" title="Titel, auteur, jaar, reeks en taal aanpassen" onclick="openEditDialog(${b.id})">${icon('edit', sz)}</button>`);
   if (b.status !== 'downloading')
     parts.push(`<button class="ib" aria-label="Bestand koppelen: ${t}" title="Bestand koppelen uit de bibliotheekmap" onclick="openLinkDialog(${b.id})">${icon('link', sz)}</button>`);
   parts.push(`<button class="ib ib-danger" aria-label="Verwijderen: ${t}" title="Verwijderen" onclick="deleteBook(${b.id})">${icon('trash', sz)}</button>`);
@@ -1707,6 +1742,47 @@ async function confirmDelete() {
   selectedIds.clear();
   if (selectMode) toggleSelect();
   else loadBooks();
+}
+
+/* ---------- gegevens aanpassen ---------- */
+let editBookId = null;
+function openEditDialog(id) {
+  const b = booksById[id]; if (!b) return;
+  editBookId = id;
+  $('edit-sub').textContent = b.title;
+  $('edit_title').value = b.title || '';
+  $('edit_author').value = b.author || '';
+  $('edit_year').value = b.year || '';
+  $('edit_language').value = (b.language === 'en' || b.language === 'nl') ? b.language : '';
+  $('edit_series').value = b.series || '';
+  $('edit_series_index').value = b.series_index != null ? b.series_index : '';
+  $('edit_isbn').value = b.isbn || '';
+  $('edit-msg').innerHTML = '';
+  $('edit-file-hint').textContent = b.library_path
+    ? 'Dit boek staat al in je bibliotheek: de gegevens worden ook in het epub geschreven en het bestand krijgt de bijbehorende naam (Auteur - Reeks 01 - Titel (jaar)).'
+    : 'Het boek is nog niet binnen; de gegevens worden gebruikt bij het zoeken en in de bestandsnaam.';
+  openModal('edit-overlay', 'edit_title');
+}
+async function saveEdit() {
+  const btn = $('edit-save'); btn.disabled = true;
+  try {
+    const res = await fetch(`/api/books/${editBookId}/metadata`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: $('edit_title').value, author: $('edit_author').value, year: $('edit_year').value,
+        language: $('edit_language').value, series: $('edit_series').value,
+        series_index: $('edit_series_index').value, isbn: $('edit_isbn').value
+      })
+    });
+    const d = await res.json();
+    if (!res.ok) { $('edit-msg').innerHTML = noteHtml('err', d.detail || 'Opslaan mislukt.'); return; }
+    closeModal('edit-overlay');
+    wantedMsg('ok', `"${d.title}" aangepast${d.note ? ' — ' + d.note : ''}.`);
+    await loadBooks();
+    if ($('kindle').classList.contains('active')) renderKindle();
+  } catch (e) {
+    $('edit-msg').innerHTML = noteHtml('err', 'Fout: ' + e.message);
+  } finally { btn.disabled = false; }
 }
 
 /* ---------- bestand koppelen ---------- */

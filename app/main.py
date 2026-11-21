@@ -94,6 +94,16 @@ class PrefLangIn(BaseModel):
     pref_language: str            # "en", "nl" of "" (auto)
 
 
+class BookMetaIn(BaseModel):
+    title: str
+    author: str = ""
+    year: str | int | None = None
+    series: str = ""
+    series_index: str | float | None = None
+    language: str = ""
+    isbn: str = ""
+
+
 class KindleSendIn(BaseModel):
     ids: list[int]
 
@@ -454,6 +464,14 @@ def link_book(book_id: int, payload: LinkIn):
 
 
 # ---------- Volgen (auteurs + reeksen) ----------
+
+@app.post("/api/books/{book_id}/metadata")
+def edit_book_metadata(book_id: int, payload: BookMetaIn):
+    try:
+        return services.update_book_metadata(book_id, payload.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
 
 @app.post("/api/books/delete")
 def bulk_delete_books(payload: BulkDeleteIn):
