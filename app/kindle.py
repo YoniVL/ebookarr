@@ -4,10 +4,15 @@ Amazon geeft elke Kindle een eigen @kindle.com-adres. Een mail met het epub als
 bijlage (vanaf een goedgekeurd afzenderadres) komt vanzelf op het toestel.
 We versturen via een gewone SMTP-server (bv. Gmail met een app-wachtwoord).
 """
+import io
 import logging
 import mimetypes
+import posixpath
+import re
 import smtplib
 import ssl
+import time
+import zipfile
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -19,8 +24,53 @@ MAX_BYTES = 50 * 1024 * 1024   # limiet van Amazon per mail
 OK_EXT = {".epub", ".pdf", ".docx", ".txt", ".rtf", ".html"}
 
 
+# Gmail weigert zip-bestanden (een epub is er één) met "uitvoerbare" bestanden erin,
+# bv. het watermerkbestand 'oceanofpdf.com' dat in sommige epubs zit.
+BAD_EXT = {".com", ".exe", ".js", ".bat", ".vbs", ".scr", ".jar", ".cmd", ".msi", ".dll", ".lnk"}
+
+
 class KindleError(Exception):
     pass
+
+
+def clean_epub(path: Path) -> bytes:
+    """Her-verpak het epub zonder mapitems en zonder verdachte bestanden (de
+    originele blijft ongemoeid). Bij een kapot zip-bestand: de ruwe bytes."""
+    raw = path.read_bytes()
+    try:
+        zin = zipfile.ZipFile(io.BytesIO(raw))
+        names = [n for n in zin.namelist() if not n.endswith("/")]
+        dropped = [n for n in names if posixpath.splitext(n)[1].lower() in BAD_EXT]
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+            if "mimetype" in names:       # moet eerst en onaangepast (stored)
+                zout.writestr(zipfile.ZipInfo("mimetype"), zin.read("mimetype"), zipfile.ZIP_STORED)
+            for n in names:
+                if n == "mimetype" or n in dropped:
+                    continue
+                data = zin.read(n)
+                if n.lower().endswith(".opf") and dropped:
+                    txt = data.decode("utf-8", "ignore")
+                    for d in dropped:
+                        base = re.escape(posixpath.basename(d))
+                        txt = re.sub(r'<item[^>]*href="[^"]*' + base + r'"[^>]*/?>', "", txt)
+                    data = txt.encode("utf-8")
+                zout.writestr(n, data)
+        if dropped:
+            log.info("Kindle: %s uit %s gehaald voor het versturen", ", ".join(dropped), path.name)
+        return out.getvalue()
+    except (zipfile.BadZipFile, KeyError, OSError):
+        return raw
+
+
+def friendly_error(e) -> str:
+    code = getattr(e, "smtp_code", None)
+    text = str(getattr(e, "smtp_error", b"") or e)
+    if code == 552 or "5.7.0" in text:
+        return "Gmail blokkeert dit bestand als mogelijk onveilig"
+    if code in (421, 450, 451, 452) or "limit" in text.lower():
+        return "Gmail-verzendlimiet bereikt — probeer het later opnieuw"
+    return f"verzenden mislukt ({code or 'fout'})"
 
 
 def config():
@@ -107,13 +157,22 @@ def send_files(items):
             if p.suffix.lower() == ".epub":
                 ctype = "application/epub+zip"
             main, sub = ctype.split("/", 1)
-            msg.add_attachment(p.read_bytes(), maintype=main, subtype=sub, filename=p.name)
+            payload = clean_epub(p) if p.suffix.lower() == ".epub" else p.read_bytes()
+            msg.add_attachment(payload, maintype=main, subtype=sub, filename=p.name)
             try:
                 smtp.send_message(msg)
                 results[book_id] = None
                 log.info("Naar Kindle gestuurd: %s", p.name)
+                time.sleep(0.4)   # niet alles in één salvo naar Gmail/Amazon
+            except smtplib.SMTPServerDisconnected as e:
+                results[book_id] = "verbinding met de mailserver verbroken"
+                log.warning("Kindle-verzending mislukt voor %s: %s", p.name, e)
+                try:
+                    smtp = _connect(cfg)
+                except KindleError:
+                    break
             except (OSError, smtplib.SMTPException) as e:
-                results[book_id] = f"verzenden mislukt: {e}"
+                results[book_id] = friendly_error(e)
                 log.warning("Kindle-verzending mislukt voor %s: %s", p.name, e)
     finally:
         try:

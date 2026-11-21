@@ -1384,6 +1384,7 @@ function markKindleSelected(sent) { markKindle([...kindleSel], sent); }
 function sendKindleSelected() { sendKindle([...kindleSel], $('kindle-send-sel')); }
 async function sendKindle(ids, btn) {
   if (!ids.length) return;
+  if (ids.length > 25 && !confirm(`${ids.length} boeken in één keer versturen? Dat duurt een paar minuten en Amazon/Gmail kunnen bij grote aantallen bestanden weigeren — in delen van ±25 gaat het het best.`)) return;
   if (btn) btn.disabled = true;
   $('kindle-msg').innerHTML = noteHtml('info', ids.length === 1 ? 'Versturen…' : `${ids.length} boeken versturen…`);
   try {
@@ -1394,7 +1395,7 @@ async function sendKindle(ids, btn) {
     if (!res.ok) { $('kindle-msg').innerHTML = noteHtml('err', d.detail || 'Versturen mislukt.'); return; }
     const failed = Object.entries(d.failed || {});
     const sentN = (d.sent || []).length;
-    let msg = sentN ? `${sentN} boek${sentN === 1 ? '' : 'en'} naar je Kindle gestuurd — het kan een paar minuten duren voor ze verschijnen.` : '';
+    let msg = sentN ? `${sentN} boek${sentN === 1 ? '' : 'en'} naar je Kindle gestuurd — het kan een paar minuten duren voor ze verschijnen. Weigert Amazon er een, dan krijg je een mail “Onbestelbaar” van Google: zet dat boek dan terug op “niet verstuurd” (pijltje bij het boek) en probeer het opnieuw.` : '';
     if (failed.length) msg += (msg ? ' ' : '') + failed.map(([id, e]) => `“${(booksById[id] || {}).title || id}”: ${e}`).join(' · ');
     $('kindle-msg').innerHTML = noteHtml(failed.length ? 'err' : 'ok', msg || 'Niets verstuurd.');
     (d.sent || []).forEach(id => kindleSel.delete(id));
