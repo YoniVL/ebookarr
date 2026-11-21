@@ -178,6 +178,9 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   `search.json` (dat het werk met de titel van een willekeurige editie gaf, bv. de Spaanse). `search()`
   geeft bij een ISBN alleen de edities met precies die ISBN terug (`_isbn13` zet ISBN-10 om).
 - `search()` onthoudt een resultaat niet meer in `_cache` als een bron faalde.
+- v58: `_original_year_raw` kiest de Open Library-record met de meeste edities (niet het laagste jaar). Eenmalige
+  jaren-update over de bestaande boeken gedaan (5 aangepast, 90 klopten al). Let op: OL zelf heeft soms een fout
+  `first_publish_year` (Wolves of the Calla = 1997, The Gunslinger = 1976) — die twee zijn handmatig hersteld.
 - v57 oorspronkelijk jaar: `_apply_original_years()` zet bij de eerste 12 zoekresultaten het jaar van de EERSTE uitgave
   (Open Library `first_publish_year`, `_original_year`, 1 week gecachet in `kv_cache`, parallel, fouten genegeerd) i.p.v.
   de editiedatum van Google/het ISBN. Boeken die al in de lijst staan houden hun oude (editie)jaar.

@@ -478,6 +478,10 @@ def _original_year(title, author):
     i.p.v. het jaar van de toevallige editie die Google/ISBN teruggeeft. 0 = onbekend."""
     t = _title_text(title)
     a = (author or "").split(",")[0].strip()
+    words = a.split()
+    # "Terry Pratchett Paul Kidby" (namen aan elkaar geplakt) -> hoofdauteur
+    if len(words) >= 4 and not any(w.endswith(".") or w.lower() in ("van", "de", "der", "von", "le", "la", "du", "di", "da") for w in words):
+        a = " ".join(words[:2])
     if not t or not a:
         return 0
     return _disk_cached("ol_year", (_norm_title(t), _norm_title(a)),
@@ -487,19 +491,23 @@ def _original_year(title, author):
 def _original_year_raw(title, author):
     resp = requests.get(OPENLIB_URL, params={
         "title": title, "author": author, "limit": 10,
-        "fields": "title,author_name,first_publish_year"}, timeout=HTTP_TIMEOUT)
+        "fields": "title,author_name,first_publish_year,edition_count"}, timeout=HTTP_TIMEOUT)
     resp.raise_for_status()
     want = _norm_title(title)
     surname = _norm_title(author.split()[-1]) if author.split() else ""
-    years = []
+    found = []
     for d in resp.json().get("docs", []):
         y = d.get("first_publish_year")
         if not y or _norm_title(_title_text(d.get("title"))) != want:
             continue
         if surname and surname not in _norm_title(" ".join(d.get("author_name") or [])):
             continue
-        years.append(int(y))
-    return min(years) if years else 0
+        found.append((d.get("edition_count") or 0, int(y)))
+    if not found:
+        return 0
+    # de bekendste record van het werk (meeste edities) i.p.v. het laagste jaar: losse
+    # dubbele records hebben soms een willekeurig vroeg jaar
+    return sorted(found, key=lambda f: (-f[0], f[1]))[0][1]
 
 
 def _apply_original_years(items, cap=12):
