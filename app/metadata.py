@@ -361,9 +361,11 @@ def _openlibrary_edition_raw(isbn):
     """De exacte editie bij een ISBN (api/books) — i.p.v. search.json, dat het
     bijbehorende 'werk' teruggeeft met de titel van een willekeurige editie
     (bv. de Spaanse vertaling)."""
-    resp = requests.get("https://openlibrary.org/api/books", params={
-        "bibkeys": f"ISBN:{isbn}", "format": "json", "jscmd": "details"},
-        timeout=HTTP_TIMEOUT)
+    params = {"bibkeys": f"ISBN:{isbn}", "format": "json", "jscmd": "details"}
+    try:
+        resp = requests.get("https://openlibrary.org/api/books", params=params, timeout=HTTP_TIMEOUT + 3)
+    except (requests.ConnectionError, requests.Timeout):
+        resp = requests.get("https://openlibrary.org/api/books", params=params, timeout=HTTP_TIMEOUT + 3)
     resp.raise_for_status()
     rec = (resp.json() or {}).get(f"ISBN:{isbn}")
     d = (rec or {}).get("details") or {}
@@ -714,9 +716,11 @@ def search(query: str, languages=None, limit: int = 12, deep: bool = False):
                 errors.append(name)
                 log.warning("%s zoeken mislukt: %s", name, e)
 
-    if not combined and "google" in errors and "openlibrary" in errors:
+    if not combined and errors:
+        # een bron viel weg en de rest vond niets: dat is geen "niets gevonden"
         raise MetadataUnavailable(
-            "Kon Google Books noch Open Library bereiken. Probeer het zo nog eens, "
+            "Niet alle zoekbronnen waren bereikbaar (" + ", ".join(sorted(set(errors))) + "), "
+            "dus dit kan een onvolledig resultaat zijn. Probeer het zo nog eens, "
             "of gebruik 'Handmatig toevoegen'."
         )
 

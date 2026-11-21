@@ -178,6 +178,10 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   `search.json` (dat het werk met de titel van een willekeurige editie gaf, bv. de Spaanse). `search()`
   geeft bij een ISBN alleen de edities met precies die ISBN terug (`_isbn13` zet ISBN-10 om).
 - `search()` onthoudt een resultaat niet meer in `_cache` als een bron faalde.
+- v54: faalt een bron én is de rest leeg, dan `MetadataUnavailable` (502) i.p.v. een misleidend "niets gevonden";
+  `_openlibrary_edition_raw` probeert één keer opnieuw bij connect-timeout; de UI toont een eigen melding als een ISBN
+  nergens bekend is. Onderzocht en afgevallen als extra bron: Library of Congress (SRU geeft 0 records voor bekende ISBN's,
+  loc.gov/books zit achter Cloudflare), HathiTrust (leeg voor deze boeken), DNB (403).
 
 ## Metadata-cache (v35)
 `metadata._disk_cached(prefix, key_parts, producer)` cachet de zware API-calls

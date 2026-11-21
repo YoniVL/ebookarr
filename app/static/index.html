@@ -808,6 +808,10 @@ function metaRowHtml(it, handler) {
     </div>`;
 }
 
+function looksLikeIsbn(q) {
+  return /^[\d\-\s]{9,17}[\dXx]?$/.test((q || '').trim()) && (q.replace(/[^\dXx]/g, '').length === 10 || q.replace(/[^\dXx]/g, '').length === 13);
+}
+
 async function fetchSuggest(q) {
   const box = document.getElementById('suggest');
   box.innerHTML = '<div class="opt">Zoeken…</div>';
@@ -816,7 +820,12 @@ async function fetchSuggest(q) {
     const res = await fetch('/api/metadata/search?q=' + encodeURIComponent(q));
     const items = await res.json();
     if (!res.ok) throw new Error(items.detail || 'fout');
-    if (!items.length) { box.innerHTML = '<div class="opt">Niets gevonden — druk Enter voor meer, of "Handmatig toevoegen".</div>'; return; }
+    if (!items.length) {
+      box.innerHTML = looksLikeIsbn(q)
+        ? '<div class="opt">Geen boek gevonden met dit ISBN (Google Books en Open Library kennen het niet) — zoek op titel, of gebruik "Handmatig toevoegen".</div>'
+        : '<div class="opt">Niets gevonden — druk Enter voor meer, of "Handmatig toevoegen".</div>';
+      return;
+    }
     box.innerHTML = items.slice(0, 8).map(it => metaRowHtml(it, 'opt')).join('') +
       `<div class="opt" style="justify-content:center;color:var(--accent);" onclick='openAddResults(${JSON.stringify(q).replace(/'/g, "&#39;")})'>↵ Alle resultaten tonen</div>`;
   } catch (e) {
