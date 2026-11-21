@@ -2065,7 +2065,7 @@ document.querySelectorAll('#settings input, #settings select').forEach(el => {
     let cur = links[0].getAttribute('href').slice(1);
     for (const a of links) {
       const el = $(a.getAttribute('href').slice(1));
-      if (el && el.getBoundingClientRect().top <= 120) cur = a.getAttribute('href').slice(1);
+      if (el && el.getBoundingClientRect().top <= 220) cur = a.getAttribute('href').slice(1);
     }
     links.forEach(a => a.classList.toggle('spy', a.getAttribute('href').slice(1) === cur));
   };
