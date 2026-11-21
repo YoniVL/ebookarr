@@ -148,6 +148,9 @@
              background:var(--panel3); border:1px solid var(--border-strong); border-radius:var(--r-sm);
              padding:2px 6px; font:600 11px/1.3 var(--font); color:var(--tag-tx); }
 
+  .seriestag { display:inline-block; vertical-align:middle; font:500 11px/1.3 var(--font);
+               padding:4px 10px; border-radius:999px; background:var(--accent-soft);
+               border:1px solid var(--accent-line); color:var(--accent-hi); }
   .langtoggle { font:500 11px/1.3 var(--font); border:1px solid var(--border); background:var(--panel2);
                 color:var(--muted); border-radius:999px; padding:4px 10px; cursor:pointer; min-height:0; }
   .langtoggle:hover { color:var(--text); border-color:var(--border-strong); }
@@ -315,12 +318,13 @@
       <button class="btn secondary small filter-btn" data-filter="wanted" onclick="setFilter('wanted')">Gewenst</button>
       <button class="btn secondary small filter-btn" data-filter="downloading" onclick="setFilter('downloading')">Downloadt</button>
       <button class="btn secondary small filter-btn" data-filter="downloaded" onclick="setFilter('downloaded')">Binnengehaald</button>
-      <input id="book-filter" class="book-filter" placeholder="Filter op titel of auteur…"
+      <input id="book-filter" class="book-filter" placeholder="Filter op titel, auteur of reeks…"
              oninput="filterBooks()" style="padding:6px 10px;font-size:13px;">
       <select id="book-sort" onchange="setBookSort(this.value)" title="Sorteren op"
               style="padding:4px 8px;font-size:13px;min-height:32px;">
         <option value="title">Boeknaam (A–Z)</option>
         <option value="author">Auteur (achternaam)</option>
+        <option value="series">Reeks (op deelnummer)</option>
         <option value="year-desc">Release (nieuw → oud)</option>
         <option value="year-asc">Release (oud → nieuw)</option>
         <option value="added">Laatst toegevoegd</option>
@@ -1141,6 +1145,15 @@ function sortBooks(list) {
       if (kb === null) return -1;
       return cmp(ka, kb) || byTitle(a, b);
     });
+  } else if (bookSort === 'series') {
+    arr.sort((a, b) => {
+      const sa = (a.series || '').trim(), sb = (b.series || '').trim();
+      if (!sa && !sb) return byTitle(a, b);
+      if (!sa) return 1;                    // zonder reeks onderaan
+      if (!sb) return -1;
+      const ia = a.series_index ?? 9999, ib = b.series_index ?? 9999;
+      return cmp(sa, sb) || (ia - ib) || ((a.year || 9999) - (b.year || 9999)) || byTitle(a, b);
+    });
   } else if (bookSort === 'year-desc' || bookSort === 'year-asc') {
     const dir = bookSort === 'year-desc' ? -1 : 1;
     arr.sort((a, b) => {
@@ -1274,7 +1287,8 @@ function renderBooks() {
   if (currentFilter !== 'all') shown = shown.filter(b => b.status === currentFilter);
   const q = (document.getElementById('book-filter')?.value || '').trim().toLowerCase();
   if (q) shown = shown.filter(b =>
-    (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q));
+    (b.title || '').toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q) ||
+    (b.series || '').toLowerCase().includes(q));
 
   if (!books.length) {
     list.innerHTML = `<div class="empty">${icon('book',24)}<span>Nog geen boeken. Zoek er hierboven een op.</span></div>`;
@@ -1301,6 +1315,7 @@ function renderBooks() {
         <div class="meta">
           <span>${escapeHtml(b.author || 'onbekende auteur')}</span>
           ${b.language ? `<span class="sep">·</span>${langTag(b.language)}` : ''}
+          ${b.series ? `<span class="seriestag" title="Reeks">${escapeHtml(b.series)}${b.series_index != null ? ' #' + b.series_index : ''}</span>` : ''}
           <span class="pill ${b.status}">${statusLabel(b.status)}</span>
           <button class="langtoggle" title="Voorkeurstaal om naar te zoeken (klik om te wisselen)"
               onclick="cyclePrefLang(${b.id})">zoekt: ${prefLangLabel(b)}</button>

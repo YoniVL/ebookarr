@@ -200,6 +200,12 @@ def _m009_kv_cache(conn):
     )
 
 
+def _m010_book_series(conn):
+    # Reeks waartoe het boek behoort + het deelnummer (voor de bestandsnaam)
+    _add_column(conn, "books", "series TEXT")
+    _add_column(conn, "books", "series_index REAL")
+
+
 MIGRATIONS = [
     _m001_initial,
     _m002_book_metadata,
@@ -210,6 +216,7 @@ MIGRATIONS = [
     _m007_pref_language,
     _m008_book_source,
     _m009_kv_cache,
+    _m010_book_series,
 ]
 
 

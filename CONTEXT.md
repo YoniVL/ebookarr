@@ -197,6 +197,18 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   nergens bekend is. Onderzocht en afgevallen als extra bron: Library of Congress (SRU geeft 0 records voor bekende ISBN's,
   loc.gov/books zit achter Cloudflare), HathiTrust (leeg voor deze boeken), DNB (403).
 
+## Reeks + jaar in de bestandsnaam (v59)
+- Bestandsnaam bij import: `Auteur - Reeks 04 - Titel (1987).epub` (`_filename_for`); reeks/deelnummer en jaar
+  alleen als bekend, de titel krimpt bij >180 tekens zodat het jaar blijft. `_meta_from_filename` leest dit terug
+  (herscan van losse bestanden), `find_in_library` negeert het `(jaar)` achteraan. Calibre schrijft de reeks ook in
+  het epub (`--series/--index`), `_parse_epub_meta` leest `calibre:series` terug.
+- Kolommen `books.series`, `books.series_index` (migratie m010). Bron: de gevolgde reeks (`found_via` = "reeks: X",
+  bij `accept_suggestion`) en anders Wikidata (`metadata.series_for`: P179 + volgnummer P1545, kiest de hoofdreeks
+  i.p.v. een deelreeks, 1 week gecachet). `fill_series[_async]` vult aan; `_with_series` doet het synchroon vlak vóór de
+  bestandsnaam wordt bepaald. Dekking is best effort (bv. Dark Tower en Colour of Magic ontbreken op Wikidata).
+- UI: reeks-label op de kaart, sorteeroptie "Reeks (op deelnummer)", filterveld zoekt ook op reeksnaam.
+- Bestaande bestanden in de bibliotheekmap zijn NIET hernoemd (alleen nieuwe imports krijgen de nieuwe naam).
+
 ## Metadata-cache (v35)
 `metadata._disk_cached(prefix, key_parts, producer)` cachet de zware API-calls
 (`_google`, `_openlibrary`, `_ol_by_author`, `_ol_by_series`) een week lang in de

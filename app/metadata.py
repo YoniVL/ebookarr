@@ -526,6 +526,51 @@ def _apply_original_years(items, cap=12):
         list(pool.map(one, todo))
 
 
+def series_for(title, author):
+    """Reeks + deelnummer van een boek via Wikidata (P179 'onderdeel van de reeks',
+    kwalificatie P1545 'volgnummer'). Geeft {"series": ..., "index": float|None} of {}.
+    Best effort: werkt voor bekende boeken, niet voor elk boek."""
+    t = _title_text(title)
+    words = ((author or "").split(",")[0]).split()
+    if len(words) >= 4 and not any(w.endswith(".") for w in words):
+        words = words[:2]
+    surname = re.sub(r"[^a-z0-9 ]", "", words[-1].lower()) if words else ""
+    if not t or not surname:
+        return {}
+    return _disk_cached("wd_series", (_norm_title(t), surname),
+                        lambda: _wikidata_series_raw(t, surname))
+
+
+def _wikidata_series_raw(title, surname):
+    esc = title.replace("\\", "\\\\").replace('"', '\\"')
+    labels = " ".join(f'"{v}"@{lang}' for v in {esc, esc.replace("'", "\u2019")}
+                      for lang in ("en", "nl"))
+    query = f"""SELECT DISTINCT ?seriesLabel ?ord WHERE {{
+  VALUES ?lbl {{ {labels} }}
+  ?w rdfs:label ?lbl ; wdt:P50 ?au ; p:P179 ?st .
+  ?au rdfs:label ?al . FILTER(CONTAINS(LCASE(?al), "{surname}"))
+  ?st ps:P179 ?series . OPTIONAL {{ ?st pq:P1545 ?ord }}
+  FILTER NOT EXISTS {{ ?series wdt:P361 ?parent . ?w wdt:P179 ?parent }}
+  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en,nl". }}
+}} LIMIT 5"""
+    resp = requests.get("https://query.wikidata.org/sparql", params={"query": query},
+                        headers={"User-Agent": "EbookArr/1.0 (persoonlijke ebook-manager)",
+                                 "Accept": "application/sparql-results+json"},
+                        timeout=HTTP_TIMEOUT + 5)
+    resp.raise_for_status()
+    rows = resp.json().get("results", {}).get("bindings", [])
+    if not rows:
+        return {}
+    rows.sort(key=lambda b: "ord" not in b)          # eentje mét volgnummer eerst
+    best = rows[0]
+    idx = None
+    try:
+        idx = float(best["ord"]["value"]) if "ord" in best else None
+    except (ValueError, KeyError):
+        idx = None
+    return {"series": best["seriesLabel"]["value"], "index": idx}
+
+
 def _google_paged(query, language, want):
     """Meerdere pagina's Google Books ophalen (max ~200)."""
     out = []

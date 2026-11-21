@@ -839,11 +839,27 @@ def _sanitize(s):
     return s or "boek"
 
 
+def _fmt_index(idx):
+    """4.0 -> '04' (zodat reeksdelen netjes sorteren), 0.5 -> '0.5'."""
+    try:
+        f = float(idx)
+    except (TypeError, ValueError):
+        return ""
+    return f"{int(f):02d}" if f == int(f) else f"{f:g}"
+
+
 def _filename_for(book, suffix=".epub"):
-    author = _sanitize(book.get("author") or "")
+    """'Auteur - Reeks 04 - Titel (1987).epub'; reeks en jaar alleen als bekend."""
+    author = _sanitize(book.get("author") or "") if (book.get("author") or "").strip() else ""
     title = _sanitize(book.get("title") or "boek")
-    base = f"{author} - {title}" if author else title
-    return base[:180] + (suffix or ".epub")
+    series = _sanitize(book.get("series") or "") if (book.get("series") or "").strip() else ""
+    series_part = f"{series} {_fmt_index(book.get('series_index'))}".strip() if series else ""
+    year = book.get("year")
+    year_part = f" ({int(year)})" if year else ""
+    head = " - ".join(p for p in (author, series_part) if p)
+    prefix = f"{head} - " if head else ""
+    room = max(180 - len(prefix) - len(year_part), 20)   # de titel krimpt, het jaar blijft
+    return prefix + title[:room].rstrip() + year_part + (suffix or ".epub")
 
 
 def _resolve_file_path(t, rel_name):
@@ -905,6 +921,7 @@ def _place_in_library(book, src: Path, ext: str):
 
     dest_dir = Path(library)
     dest_dir.mkdir(parents=True, exist_ok=True)
+    book = _with_series(book)
     dest = dest_dir / _filename_for(book, ".epub")
     if dest.exists():
         dest = dest.with_stem(f"{dest.stem} ({book['id']})")
@@ -945,6 +962,10 @@ def _embed_metadata(book, epub_path: Path):
     lang = book.get("language")
     if lang:
         args += ["--language", _LANG3.get(lang, lang)]
+    if book.get("series"):
+        args += ["--series", book["series"]]
+        if book.get("series_index") is not None:
+            args += ["--index", f"{float(book['series_index']):g}"]
 
     cover_tmp = None
     try:
@@ -1029,7 +1050,7 @@ def find_in_library(title: str, author: str = ""):
         return None
     awords = _author_words(author)
     for p in _iter_library_files():
-        stem = _norm(p.stem)
+        stem = _norm(re.sub(r"\s*\(\d{4}\)$", "", p.stem))
         if nt not in stem:
             continue
         if not awords or any(w in stem for w in awords):
@@ -1050,6 +1071,54 @@ def _find_duplicate(title, author, isbn):
             if not na or not rna or na == rna:
                 return r
     return None
+
+
+_series_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="series")
+
+
+def fill_series(book_id: int):
+    """Vul reeks + deelnummer aan via Wikidata (best effort, stil bij falen).
+    Een reeks die al bekend is (bv. uit een gevolgde reeks) blijft staan; dan
+    wordt alleen het deelnummer aangevuld."""
+    try:
+        with db.get_conn() as conn:
+            row = conn.execute(
+                "SELECT title, author, series, series_index FROM books WHERE id=?",
+                (book_id,)).fetchone()
+        if not row or (row["series"] and row["series_index"] is not None):
+            return
+        found = metadata.series_for(row["title"], row["author"])
+        if not found.get("series"):
+            return
+        if row["series"] and _norm(row["series"]) not in _norm(found["series"]) \
+                and _norm(found["series"]) not in _norm(row["series"]):
+            return                                   # andere reeks dan de gevolgde
+        with db.get_conn() as conn:
+            if row["series"]:
+                conn.execute("UPDATE books SET series_index=? WHERE id=?",
+                             (found.get("index"), book_id))
+            else:
+                conn.execute("UPDATE books SET series=?, series_index=? WHERE id=?",
+                             (found["series"], found.get("index"), book_id))
+            conn.commit()
+    except Exception as e:  # noqa: BLE001
+        log.debug("reeks aanvullen mislukt voor boek %s: %s", book_id, e)
+
+
+def fill_series_async(book_id: int):
+    _series_pool.submit(fill_series, book_id)
+
+
+def _with_series(book):
+    """Zorg dat `book` zijn reeks heeft vóór we de bestandsnaam bepalen (een
+    zojuist toegevoegd boek kan nog op de achtergrond-opzoeking wachten)."""
+    if book.get("series") and book.get("series_index") is not None:
+        return book
+    fill_series(book["id"])
+    with db.get_conn() as conn:
+        row = conn.execute("SELECT series, series_index FROM books WHERE id=?",
+                           (book["id"],)).fetchone()
+    return {**book, **dict(row)} if row else book
 
 
 def create_book(data: dict, allow_duplicate: bool = False):
@@ -1073,16 +1142,18 @@ def create_book(data: dict, allow_duplicate: bool = False):
             """INSERT INTO books
                    (title, author, language, isbn, cover_url, description, year,
                     source_id, format_preference, status, library_path, progress,
-                    pref_language)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    pref_language, series, series_index)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (title, author, data.get("language"), data.get("isbn"),
              data.get("cover_url"), data.get("description"), data.get("year"),
              data.get("source_id"), data.get("format_preference") or "epub",
              status, str(existing) if existing else None,
-             1.0 if existing else 0, pref_lang),
+             1.0 if existing else 0, pref_lang,
+             (data.get("series") or "").strip() or None, data.get("series_index")),
         )
         conn.commit()
         book_id = cur.lastrowid
+    fill_series_async(book_id)
 
     note = None
     if existing:
@@ -1130,7 +1201,18 @@ def _parse_epub_meta(path: Path):
             isbn = m2.group(1)
             break
     lang_raw = text("language")
+    series, series_index = "", None
+    for mt in opf.iter("{http://www.idpf.org/2007/opf}meta"):
+        if mt.get("name") == "calibre:series":
+            series = (mt.get("content") or "").strip()
+        elif mt.get("name") == "calibre:series_index":
+            try:
+                series_index = float(mt.get("content"))
+            except (TypeError, ValueError):
+                pass
     return {
+        "series": series,
+        "series_index": series_index,
         "title": text("title"),
         "author": ", ".join(creators),
         "language": metadata._norm_lang(lang_raw) if lang_raw else None,
@@ -1140,14 +1222,29 @@ def _parse_epub_meta(path: Path):
     }
 
 
-def _title_author_from_filename(path: Path):
-    """Val terug op de bestandsnaam als er geen (bruikbare) metadata te lezen
-    is: onze eigen naamgeving is 'Auteur - Titel.ext' (zie `_filename_for`)."""
+def _meta_from_filename(path: Path):
+    """Val terug op de bestandsnaam als er geen (bruikbare) metadata te lezen is:
+    onze eigen naamgeving is 'Auteur - [Reeks [04] - ]Titel[ (jaar)].ext'
+    (zie `_filename_for`). Geeft {title, author, series, series_index, year}."""
     stem = path.stem
-    if " - " in stem:
-        author, title = stem.split(" - ", 1)
-        return title.strip() or stem, author.strip()
-    return stem, ""
+    out = {"title": stem, "author": "", "series": "", "series_index": None, "year": None}
+    m = re.search(r"\s*\((\d{4})\)\s*$", stem)
+    if m:
+        out["year"] = int(m.group(1))
+        stem = stem[:m.start()]
+    parts = [p.strip() for p in stem.split(" - ")]
+    if len(parts) >= 3:
+        out["author"], series_part, out["title"] = parts[0], parts[1], " - ".join(parts[2:])
+        sm = re.match(r"^(.*?)(?:\s+(\d+(?:\.\d+)?))?$", series_part)
+        out["series"] = (sm.group(1) if sm else series_part).strip()
+        if sm and sm.group(2):
+            out["series_index"] = float(sm.group(2))
+    elif len(parts) == 2:
+        out["author"], out["title"] = parts
+    else:
+        out["title"] = stem.strip()
+    out["title"] = out["title"].strip() or path.stem
+    return out
 
 
 def _resolved_library_paths(conn):
@@ -1175,12 +1272,17 @@ def _import_orphan_files(known_paths):
             continue
 
         meta = _parse_epub_meta(p) if p.suffix.lower() == ".epub" else {}
+        fn = _meta_from_filename(p)
         title = (meta.get("title") or "").strip()
         author = (meta.get("author") or "").strip()
         if not title:
-            title, fallback_author = _title_author_from_filename(p)
-            author = author or fallback_author
+            title = fn["title"]
+            author = author or fn["author"]
         title = title.strip()
+        meta["year"] = meta.get("year") or fn["year"]
+        meta["series"] = meta.get("series") or fn["series"]
+        if meta.get("series_index") is None:
+            meta["series_index"] = fn["series_index"]
         if not title:
             known_paths.add(key)
             continue
@@ -1205,13 +1307,15 @@ def _import_orphan_files(known_paths):
             cur = conn.execute(
                 """INSERT INTO books
                        (title, author, language, isbn, year, description, status,
-                        library_path, progress, pref_language, source)
-                   VALUES (?, ?, ?, ?, ?, ?, 'downloaded', ?, 1.0, ?, 'handmatig')""",
+                        library_path, progress, pref_language, source, series, series_index)
+                   VALUES (?, ?, ?, ?, ?, ?, 'downloaded', ?, 1.0, ?, 'handmatig', ?, ?)""",
                 (title, author, meta.get("language"), meta.get("isbn") or None,
-                 meta.get("year"), meta.get("description") or None, str(p), pref_lang),
+                 meta.get("year"), meta.get("description") or None, str(p), pref_lang,
+                 meta.get("series") or None, meta.get("series_index")),
             )
             conn.commit()
             book_id = cur.lastrowid
+        fill_series_async(book_id)
         db.add_history(book_id, "import", detail=f"gevonden bij herscan: {p.name}")
         added.append(title)
         known_paths.add(key)
@@ -1420,6 +1524,8 @@ def accept_suggestion(sug_id: int):
             "title": s["title"], "author": s["author"], "language": s["language"],
             "isbn": s["isbn"], "cover_url": s["cover_url"], "description": s["description"],
             "year": s["year"], "source_id": s["source_id"],
+            "series": (s.get("found_via") or "").split(": ", 1)[1]
+            if (s.get("found_via") or "").startswith("reeks: ") else None,
         })
     except DuplicateBook:
         db.set_suggestion_state(sug_id, "added")
