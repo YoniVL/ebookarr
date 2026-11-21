@@ -6,6 +6,7 @@ en oudere titels en levert betrouwbare covers via ISBN.
 """
 import logging
 import re
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -526,42 +527,124 @@ def _apply_original_years(items, cap=12):
         list(pool.map(one, todo))
 
 
+_WD_API = "https://www.wikidata.org/w/api.php"
+_WD_SPARQL = "https://query.wikidata.org/sparql"
+_WD_HEADERS = {"User-Agent": "EbookArr/1.0 (persoonlijke ebook-manager)"}
+_wd_slots = threading.Semaphore(2)     # Wikidata vraagt om zuinig te zijn met parallelle calls
+
+
+def _wd_get(url, params, accept="application/json"):
+    """GET met een paar nieuwe pogingen bij een tijdelijke limiet (429/5xx)."""
+    last = None
+    for attempt in range(3):
+        with _wd_slots:
+            try:
+                resp = requests.get(url, params=params, timeout=HTTP_TIMEOUT + 8,
+                                    headers={**_WD_HEADERS, "Accept": accept})
+            except requests.RequestException as e:
+                last = e
+                resp = None
+        if resp is not None:
+            if resp.status_code == 200:
+                try:
+                    return resp.json()
+                except ValueError:
+                    last = RuntimeError("Wikidata gaf geen JSON terug")
+            else:
+                last = RuntimeError(f"Wikidata HTTP {resp.status_code}")
+                if resp.status_code not in (429, 500, 502, 503, 504):
+                    break
+                wait = resp.headers.get("Retry-After", "")
+                time.sleep(int(wait) if wait.isdigit() else 2 * (attempt + 1))
+                continue
+        time.sleep(2 * (attempt + 1))
+    raise last or RuntimeError("Wikidata niet bereikbaar")
+
+
 def series_for(title, author):
     """Reeks + deelnummer van een boek via Wikidata (P179 'onderdeel van de reeks',
     kwalificatie P1545 'volgnummer'). Geeft {"series": ..., "index": float|None} of {}.
-    Best effort: werkt voor bekende boeken, niet voor elk boek."""
+    Best effort: werkt voor bekende boeken, niet voor elk boek. Bij een fout (limiet,
+    geen verbinding) volgt een exception, zodat 'onbekend' nooit gecachet wordt."""
     t = _title_text(title)
-    words = ((author or "").split(",")[0]).split()
-    if len(words) >= 4 and not any(w.endswith(".") for w in words):
-        words = words[:2]
-    surname = re.sub(r"[^a-z0-9 ]", "", words[-1].lower()) if words else ""
-    if not t or not surname:
+    words = [re.sub(r"[^a-z0-9]", "", w.lower()) for w in ((author or "").split(",")[0]).split()]
+    words = [w for w in words if w]
+    if len(words) >= 4 and not any(w.endswith(".") for w in (author or "").split()):
+        names = [w for w in words if len(w) >= 3]       # aaneengeplakte namen: elk telt mee
+    else:
+        names = words[-1:]
+    if not t or not names:
         return {}
-    return _disk_cached("wd_series", (_norm_title(t), surname),
-                        lambda: _wikidata_series_raw(t, surname))
+    return _disk_cached("wd_series6", (_norm_title(t), "|".join(names)),
+                        lambda: _wikidata_series_raw(t, names))
 
 
-def _wikidata_series_raw(title, surname):
-    esc = title.replace("\\", "\\\\").replace('"', '\\"')
-    labels = " ".join(f'"{v}"@{lang}' for v in {esc, esc.replace("'", "\u2019")}
-                      for lang in ("en", "nl"))
-    query = f"""SELECT DISTINCT ?seriesLabel ?ord WHERE {{
-  VALUES ?lbl {{ {labels} }}
-  ?w rdfs:label ?lbl ; wdt:P50 ?au ; p:P179 ?st .
-  ?au rdfs:label ?al . FILTER(CONTAINS(LCASE(?al), "{surname}"))
+def _wikidata_candidates(title):
+    """Wikidata-items die bij de titel passen, beste eerst: [(score, id)]. De zoekfunctie
+    van Wikidata vindt ook alternatieve titels ('The Dark Tower III: The Waste Lands'
+    voor 'The Waste Lands') en items zonder Engels label."""
+    ttoks = re.findall(r"[a-z0-9]+", title.lower())
+
+    def contains(toks):                    # titel als aaneengesloten woorden (VI != VII)
+        n = len(ttoks)
+        return bool(n) and any(toks[i:i + n] == ttoks for i in range(len(toks) - n + 1))
+
+    found = {}
+    for lang in ("en", "nl"):
+        data = _wd_get(_WD_API, {"action": "wbsearchentities", "search": title, "language": lang,
+                                 "type": "item", "limit": 50, "format": "json"})
+        for rank, c in enumerate(data.get("search", [])):
+            texts = [re.findall(r"[a-z0-9]+", x.lower())
+                     for x in (c.get("label"), (c.get("match") or {}).get("text")) if x]
+            score = 2 if ttoks in texts else 1 if any(contains(x) for x in texts) else 0
+            if score:
+                key = c["id"]
+                cur = found.get(key)
+                if not cur or (score, -rank) > cur:
+                    found[key] = (score, -rank)
+        if found:
+            break
+    return [(k, v[0]) for k, v in sorted(found.items(), key=lambda kv: kv[1], reverse=True)]
+
+
+def _wikidata_series_raw(title, names):
+    cands = _wikidata_candidates(title)[:40]
+    if not cands:
+        return {}
+    ids = [i for i, _ in cands]
+    score = dict(cands)
+    values = " ".join("wd:" + i for i in ids)
+    name_filter = " || ".join(f'CONTAINS(LCASE(?al), "{n}")' for n in names)
+    query = f"""SELECT DISTINCT ?w ?series ?seriesLabel ?ord WHERE {{
+  VALUES ?w {{ {values} }}
+  ?w wdt:P50 ?au ; p:P179 ?st .
+  ?au rdfs:label ?al . FILTER({name_filter})
   ?st ps:P179 ?series . OPTIONAL {{ ?st pq:P1545 ?ord }}
   FILTER NOT EXISTS {{ ?series wdt:P361 ?parent . ?w wdt:P179 ?parent }}
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en,nl". }}
-}} LIMIT 5"""
-    resp = requests.get("https://query.wikidata.org/sparql", params={"query": query},
-                        headers={"User-Agent": "EbookArr/1.0 (persoonlijke ebook-manager)",
-                                 "Accept": "application/sparql-results+json"},
-                        timeout=HTTP_TIMEOUT + 5)
-    resp.raise_for_status()
-    rows = resp.json().get("results", {}).get("bindings", [])
+}}"""
+    data = _wd_get(_WD_SPARQL, {"query": query}, accept="application/sparql-results+json")
+    rows = data.get("results", {}).get("bindings", [])
     if not rows:
         return {}
-    rows.sort(key=lambda b: "ord" not in b)          # eentje mét volgnummer eerst
+    order = {i: n for n, i in enumerate(ids)}        # volgorde van relevantie
+    wid = lambda b: b["w"]["value"].rsplit("/", 1)[-1]  # noqa: E731
+    top = max(score.get(wid(b), 0) for b in rows)       # alleen de best passende titel-items
+    rows = [b for b in rows if score.get(wid(b), 0) == top]
+    # Zit het boek in meer reeksen (Discworld én de subreeks 'Death')? Neem de
+    # grootste: de reeks met de meeste delen is de hoofdreeks.
+    sizes = {}
+    series_ids = sorted({b["series"]["value"].rsplit("/", 1)[-1] for b in rows})
+    if len(series_ids) > 1:
+        vals = " ".join("wd:" + i for i in series_ids)
+        # (eerst het patroon, dán VALUES: andersom geeft WDQS een leeg antwoord)
+        cnt = _wd_get(_WD_SPARQL, {"query": "SELECT ?series (COUNT(DISTINCT ?m) AS ?n) WHERE { "
+                                            f"?m wdt:P179 ?series . VALUES ?series {{ {vals} }} }} GROUP BY ?series"},
+                      accept="application/sparql-results+json")
+        for b in cnt.get("results", {}).get("bindings", []):
+            sizes[b["series"]["value"].rsplit("/", 1)[-1]] = int(b["n"]["value"])
+    rows.sort(key=lambda b: (-sizes.get(b["series"]["value"].rsplit("/", 1)[-1], 0),
+                             order.get(wid(b), 99), "ord" not in b))
     best = rows[0]
     idx = None
     try:

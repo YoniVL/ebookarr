@@ -206,6 +206,11 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   bij `accept_suggestion`) en anders Wikidata (`metadata.series_for`: P179 + volgnummer P1545, kiest de hoofdreeks
   i.p.v. een deelreeks, 1 week gecachet). `fill_series[_async]` vult aan; `_with_series` doet het synchroon vlak vóór de
   bestandsnaam wordt bepaald. Dekking is best effort (bv. Dark Tower en Colour of Magic ontbreken op Wikidata).
+- v61 reeks-opzoeking verbeterd: kandidaten via Wikidata's `wbsearchentities` (vindt ook alternatieve titels en items zonder
+  Engels label), titelvergelijking op hele woorden (VI != VII), meerdere aaneengeplakte auteursnamen tellen allemaal mee,
+  bij meerdere reeksen wint de reeks met de meeste delen (`COUNT` op P179; let op: in WDQS eerst het patroon, dan
+  `VALUES`, anders komt er een leeg antwoord), `_wd_get` probeert opnieuw bij 429/5xx en caches alleen echte antwoorden.
+  Resultaat op de bestaande bibliotheek: 83 van 99 boeken hebben een reeks (was 69).
 - UI: reeks-label op de kaart, sorteeroptie "Reeks (op deelnummer)", filterveld zoekt ook op reeksnaam.
 - Bestaande bestanden in de bibliotheekmap zijn NIET hernoemd (alleen nieuwe imports krijgen de nieuwe naam).
 
