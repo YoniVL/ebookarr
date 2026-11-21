@@ -375,6 +375,9 @@ Het handmatige "Kies zelf" (`find_all_candidates`, parallel) heeft geen per-bron
 - Instellingen: sticky sub-nav (`.subnav`, anchors naar `#set-*`) + sticky opslaan-balk
   (`.savebar`) met het opgeslagen-bericht ernaast.
 - Filterknoppen (frontend-only): Alles / Gewenst / Downloadt / Binnengehaald — filtert op `status`.
+- Sorteren (v52, frontend-only): dropdown `#book-sort` naast het filterveld — boeknaam, auteur
+  (achternaam via `authorSortKey`, onthoudt keuze in localStorage `bookSort`), release (nieuw/oud) en
+  laatst toegevoegd (`added_at`). Boeken zonder jaar/auteur komen onderaan.
 - "Selecteren"-modus: checkboxes per kaart + "Alles"-checkbox. `POST /api/books/delete`
   `{ids:[...], delete_files:bool}` -> `services.delete_books()`. `delete_files` verwijdert
   het bestand op `books.library_path` (alleen als het een bestaand bestand is).

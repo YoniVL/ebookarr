@@ -317,6 +317,14 @@
       <button class="btn secondary small filter-btn" data-filter="downloaded" onclick="setFilter('downloaded')">Binnengehaald</button>
       <input id="book-filter" class="book-filter" placeholder="Filter op titel of auteur…"
              oninput="filterBooks()" style="padding:6px 10px;font-size:13px;">
+      <select id="book-sort" onchange="setBookSort(this.value)" title="Sorteren op"
+              style="padding:4px 8px;font-size:13px;min-height:32px;">
+        <option value="title">Boeknaam (A–Z)</option>
+        <option value="author">Auteur (achternaam)</option>
+        <option value="year-desc">Release (nieuw → oud)</option>
+        <option value="year-asc">Release (oud → nieuw)</option>
+        <option value="added">Laatst toegevoegd</option>
+      </select>
       <button class="btn secondary small" onclick="toggleSelect()" id="select-toggle">Selecteren</button>
     </div>
     <div id="select-bar" class="toolbar" style="display:none;">
@@ -1089,6 +1097,51 @@ function wantedMsg(type, text) {
 
 /* ---------- Boekenlijst ---------- */
 let currentFilter = 'all';
+
+let bookSort = (() => { try { return localStorage.getItem('bookSort') || 'title'; } catch (e) { return 'title'; } })();
+function setBookSort(v) {
+  bookSort = v;
+  try { localStorage.setItem('bookSort', v); } catch (e) {}
+  renderBooks();
+}
+// Sorteersleutel voor auteur: achternaam (laatste woord van de eerste auteur), dan voornaam
+function authorSortKey(a) {
+  let parts = ((a || '').split(',')[0]).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return null;
+  // Open Library plakt soms meerdere namen aan elkaar ("Terry Pratchett Paul Kidby"):
+  // bij 4+ woorden zonder initialen/voorvoegsels is het eerste paar de hoofdauteur
+  if (parts.length >= 4 && !parts.some(w => /\.$|^(van|de|der|den|von|le|la|du|di|da)$/i.test(w)))
+    parts = parts.slice(0, 2);
+  return (parts[parts.length - 1] + ' ' + parts.slice(0, -1).join(' ')).trim();
+}
+function sortBooks(list) {
+  const cmp = (x, y) => (x || '').localeCompare(y || '', 'nl', { sensitivity: 'base' });
+  const byTitle = (a, b) => cmp(a.title, b.title);
+  const arr = list.slice();
+  if (bookSort === 'author') {
+    arr.sort((a, b) => {
+      const ka = authorSortKey(a.author), kb = authorSortKey(b.author);
+      if (ka === null && kb === null) return byTitle(a, b);
+      if (ka === null) return 1;            // zonder auteur onderaan
+      if (kb === null) return -1;
+      return cmp(ka, kb) || byTitle(a, b);
+    });
+  } else if (bookSort === 'year-desc' || bookSort === 'year-asc') {
+    const dir = bookSort === 'year-desc' ? -1 : 1;
+    arr.sort((a, b) => {
+      if (!a.year && !b.year) return byTitle(a, b);
+      if (!a.year) return 1;                // zonder jaar onderaan
+      if (!b.year) return -1;
+      return (a.year - b.year) * dir || byTitle(a, b);
+    });
+  } else if (bookSort === 'added') {
+    arr.sort((a, b) =>
+      (b.added_at || '').localeCompare(a.added_at || '') || (b.id - a.id));
+  } else {
+    arr.sort(byTitle);
+  }
+  return arr;
+}
 let selectMode = false;
 let selectedIds = new Set();
 let grabResults = {};   // book_id -> {ok, text} : blijft even op de kaart staan
@@ -1202,8 +1255,7 @@ function renderBooks() {
     btn.innerHTML = `${base} <span class="fc">${counts[f] ?? 0}</span>`;
   });
 
-  let shown = books.slice().sort((a, b) =>
-    (a.title || '').localeCompare(b.title || '', 'nl', { sensitivity: 'base' }));
+  let shown = sortBooks(books);
   if (currentFilter !== 'all') shown = shown.filter(b => b.status === currentFilter);
   const q = (document.getElementById('book-filter')?.value || '').trim().toLowerCase();
   if (q) shown = shown.filter(b =>
@@ -1593,6 +1645,7 @@ document.addEventListener('keydown', e => {
 })();
 
 /* ---------- Init ---------- */
+document.getElementById('book-sort').value = bookSort;
 loadBooks();
 loadStatus();
 syncPollRate();
