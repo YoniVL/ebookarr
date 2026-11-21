@@ -1599,12 +1599,20 @@ def delete_books(ids, delete_files=False):
             f"SELECT id, title, library_path FROM books WHERE id IN ({placeholders})",
             ids,
         )]
+        # bestanden waar nog een ander (niet-verwijderd) boek aan hangt
+        still_used = {os.path.normcase(r["library_path"]) for r in conn.execute(
+            f"SELECT library_path FROM books WHERE id NOT IN ({placeholders}) "
+            "AND library_path IS NOT NULL", ids)}
 
     removed_files, errors = [], []
     if delete_files:
         for r in rows:
             lp = r.get("library_path")
             if not lp:
+                continue
+            if os.path.normcase(lp) in still_used:
+                log.info("Boek %s: bestand behouden, hangt ook aan een ander boek: %s", r["id"], lp)
+                errors.append(f"{r['title']}: bestand behouden, een ander boek gebruikt het nog")
                 continue
             p = Path(lp)
             try:

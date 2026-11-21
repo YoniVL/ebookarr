@@ -211,6 +211,9 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   bij meerdere reeksen wint de reeks met de meeste delen (`COUNT` op P179; let op: in WDQS eerst het patroon, dan
   `VALUES`, anders komt er een leeg antwoord), `_wd_get` probeert opnieuw bij 429/5xx en caches alleen echte antwoorden.
   Resultaat op de bestaande bibliotheek: 83 van 99 boeken hebben een reeks (was 69).
+- v62 `delete_books(delete_files=True)` laat een bestand staan als nog een ander boek er via `library_path` naar wijst
+  (twee dubbele boeken delen soms één bestand; het verwijderen van de dubbele nam anders het bestand van het
+  overgebleven boek mee). Alle 97 bestaande bestanden zijn hernoemd naar `Auteur - Reeks NN - Titel (jaar)`.
 - UI: reeks-label op de kaart, sorteeroptie "Reeks (op deelnummer)", filterveld zoekt ook op reeksnaam.
 - Bestaande bestanden in de bibliotheekmap zijn NIET hernoemd (alleen nieuwe imports krijgen de nieuwe naam).
 
