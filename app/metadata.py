@@ -575,8 +575,66 @@ def series_for(title, author):
         names = words[-1:]
     if not t or not names:
         return {}
-    return _disk_cached("wd_series6", (_norm_title(t), "|".join(names)),
-                        lambda: _wikidata_series_raw(t, names))
+    def lookup():
+        found = _disk_cached("wd_series6", (_norm_title(t), "|".join(names)),
+                             lambda: _wikidata_series_raw(t, names))
+        # Wikidata kent lang niet elke reeks (bv. The Sun Eater staat er zonder reeks):
+        # val terug op de ondertitel bij Google Books ("The Sun Eater: Book Seven")
+        return found or _google_series(t, names[-1])
+    return _disk_cached("series_all1", (_norm_title(t), "|".join(names)), lookup)
+
+
+_NUM_WORDS = {w: n for n, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+    "fifteen sixteen seventeen eighteen nineteen twenty".split())}
+_SERIES_PATTERNS = [
+    # "The Sun Eater: Book Seven" / "Discworld, Vol. 4"
+    re.compile(r"(?i)^(?P<series>.+?)\s*[:,\-–—]\s*(?:book|vol\.?|volume|part)\s+(?P<n>\w+)\s*$"),
+    # "Book One of the Sun Eater (series)"
+    re.compile(r"(?i)book\s+(?P<n>\w+)\s+of\s+(?:the\s+)?(?P<series>[^()]+?)(?:\s+(?:series|trilogy|saga|cycle))?\s*$"),
+    # "(Discworld #4)" / "(The Dark Tower, Book 3)"
+    re.compile(r"(?i)\((?P<series>[^()]+?)[,:]?\s*(?:#|book\s+|vol\.?\s*|volume\s+)(?P<n>\d+)\)"),
+]
+
+
+def _google_series(title, surname):
+    """Reeks + deelnummer uit de titel/ondertitel bij Google Books. Alleen als de
+    uitgave de reeks zelf noemt; de meest voorkomende naam onder de uitgaven wint."""
+    tn = _norm_title(title)
+
+    def raw():
+        r = _google_get({"q": f'intitle:"{title}" inauthor:{surname}', "maxResults": 15,
+                         "printType": "books"})
+        r.raise_for_status()
+        return r.json().get("items", [])
+    items = _disk_cached("g_series_raw", (tn, surname), raw)
+    votes, idx_votes = {}, {}
+    for it in items:
+        vi = it.get("volumeInfo", {})
+        if _norm_title(_title_text(vi.get("title"))) != tn:
+            continue
+        if surname not in _norm_title(" ".join(vi.get("authors") or [])):
+            continue
+        for text in (vi.get("subtitle"), vi.get("title")):
+            for pat in _SERIES_PATTERNS:
+                mt = pat.search(text or "")
+                if not mt:
+                    continue
+                name = re.sub(r"(?i)\s+(series|trilogy|saga)$", "", mt.group("series").strip(" :,-"))
+                if not name or _norm_title(name) in ("anovel", "novel", tn):
+                    continue
+                key = _norm_title(name)
+                votes.setdefault(key, [name, 0])[1] += 1
+                n = mt.group("n").lower()
+                no = int(n) if n.isdigit() else _NUM_WORDS.get(n)
+                if no:
+                    idx_votes.setdefault(key, []).append(no)
+                break
+    if not votes:
+        return {}
+    key = max(votes, key=lambda k: votes[k][1])
+    idx = max(set(idx_votes[key]), key=idx_votes[key].count) if idx_votes.get(key) else None
+    return {"series": votes[key][0], "index": float(idx) if idx else None}
 
 
 def _wikidata_candidates(title):

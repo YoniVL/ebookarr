@@ -214,6 +214,9 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
 - v62 `delete_books(delete_files=True)` laat een bestand staan als nog een ander boek er via `library_path` naar wijst
   (twee dubbele boeken delen soms één bestand; het verwijderen van de dubbele nam anders het bestand van het
   overgebleven boek mee). Alle 97 bestaande bestanden zijn hernoemd naar `Auteur - Reeks NN - Titel (jaar)`.
+- v63 tweede reeksbron: `_google_series` leest reeks + deelnummer uit de (onder)titel bij Google Books ("The Sun Eater: Book
+  Seven", "Book Two of the X", "(X #4)"), als Wikidata niets heeft (Wikidata kent The Sun Eater bv. niet als reeks). Stemming
+  over de uitgaven, alleen uitgaven met dezelfde titel en auteur. `series_for` cachet het samengestelde resultaat (`series_all1`).
 - UI: reeks-label op de kaart, sorteeroptie "Reeks (op deelnummer)", filterveld zoekt ook op reeksnaam.
 - Bestaande bestanden in de bibliotheekmap zijn NIET hernoemd (alleen nieuwe imports krijgen de nieuwe naam).
 
