@@ -468,6 +468,56 @@ def _openlibrary_edition_raw(isbn):
     }]
 
 
+def _title_text(title):
+    """Hoofdtitel als leesbare tekst (zonder ondertitel/reeks-aanhangsel)."""
+    return re.split(r"\s*[:(\[]", (title or "").strip(), maxsplit=1)[0].strip()
+
+
+def _original_year(title, author):
+    """Jaar van de EERSTE uitgave van het werk (Open Library `first_publish_year`),
+    i.p.v. het jaar van de toevallige editie die Google/ISBN teruggeeft. 0 = onbekend."""
+    t = _title_text(title)
+    a = (author or "").split(",")[0].strip()
+    if not t or not a:
+        return 0
+    return _disk_cached("ol_year", (_norm_title(t), _norm_title(a)),
+                        lambda: _original_year_raw(t, a))
+
+
+def _original_year_raw(title, author):
+    resp = requests.get(OPENLIB_URL, params={
+        "title": title, "author": author, "limit": 10,
+        "fields": "title,author_name,first_publish_year"}, timeout=HTTP_TIMEOUT)
+    resp.raise_for_status()
+    want = _norm_title(title)
+    surname = _norm_title(author.split()[-1]) if author.split() else ""
+    years = []
+    for d in resp.json().get("docs", []):
+        y = d.get("first_publish_year")
+        if not y or _norm_title(_title_text(d.get("title"))) != want:
+            continue
+        if surname and surname not in _norm_title(" ".join(d.get("author_name") or [])):
+            continue
+        years.append(int(y))
+    return min(years) if years else 0
+
+
+def _apply_original_years(items, cap=12):
+    """Zet bij de eerste `cap` resultaten het jaar van de oorspronkelijke uitgave."""
+    todo = [it for it in items[:cap] if it.get("author")]
+    if not todo:
+        return
+    def one(it):
+        try:
+            y = _original_year(it.get("title"), it.get("author"))
+        except Exception:  # noqa: BLE001 — jaar is een extra, geen reden om te falen
+            return
+        if y and (not it.get("year") or y < it["year"]):
+            it["year"] = y
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        list(pool.map(one, todo))
+
+
 def _google_paged(query, language, want):
     """Meerdere pagina's Google Books ophalen (max ~200)."""
     out = []
@@ -806,6 +856,8 @@ def search(query: str, languages=None, limit: int = 12, deep: bool = False):
     else:
         combined = _rank_by_relevance(combined, query)
         result = _apply_language_filter(combined, languages)[:limit]
+
+    _apply_original_years(result)
 
     # Een gedeeltelijk resultaat (een bron viel weg) niet onthouden — anders blijft
     # het een uur lang hangen terwijl de bron al lang weer werkt.

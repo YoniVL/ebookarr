@@ -178,6 +178,9 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   `search.json` (dat het werk met de titel van een willekeurige editie gaf, bv. de Spaanse). `search()`
   geeft bij een ISBN alleen de edities met precies die ISBN terug (`_isbn13` zet ISBN-10 om).
 - `search()` onthoudt een resultaat niet meer in `_cache` als een bron faalde.
+- v57 oorspronkelijk jaar: `_apply_original_years()` zet bij de eerste 12 zoekresultaten het jaar van de EERSTE uitgave
+  (Open Library `first_publish_year`, `_original_year`, 1 week gecachet in `kv_cache`, parallel, fouten genegeerd) i.p.v.
+  de editiedatum van Google/het ISBN. Boeken die al in de lijst staan houden hun oude (editie)jaar.
 - v56 `_edition_quality()`: tiebreak om de "logische" uitgave bovenaan te krijgen — bonus voor de auteur die in de
   resultaten het vaakst voorkomt (de echte auteur), voor een volledig ingevulde uitgave (isbn/cover/omschrijving/jaar);
   malus (-0.9) voor boxsets/bundels/stripversies/scripts/samenvattingen (`_EDITION_NOISE_RE`, `_AUTHOR_NOISE_RE`),
