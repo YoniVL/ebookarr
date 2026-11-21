@@ -247,6 +247,13 @@ def preferred_language(book: dict) -> str:
     return "en" if (book.get("language") or "").lower() == "en" else "nl"
 
 
+def reading_lang(lang):
+    """Een taal buiten en/nl komt van een vreemde editie (andere ISBN) van een
+    boek dat we in het Engels lezen: behandel die als Engels."""
+    lang = (lang or "").strip().lower()
+    return lang if lang in ("en", "nl", "") else "en"
+
+
 def _language_rank(title: str, want_langs):
     """+1 als de release-titel een taal signaleert die de gebruiker leest,
     -1 als hij duidelijk een taal signaleert die de gebruiker NIET leest,
@@ -1133,6 +1140,7 @@ def create_book(data: dict, allow_duplicate: bool = False):
             who = f" ({dup['author']})" if dup.get("author") else ""
             raise DuplicateBook(f"'{dup['title']}'{who} staat al op je lijst.")
 
+    data = {**data, "language": reading_lang(data.get("language")) or None}
     existing = find_in_library(title, author)
     status = "downloaded" if existing else "wanted"
     pref_lang = preferred_language({"language": data.get("language")})
@@ -1302,14 +1310,14 @@ def _import_orphan_files(known_paths):
             known_paths.add(key)
             continue  # al aan een ander bestand gekoppeld -> niet nog eens toevoegen
 
-        pref_lang = preferred_language({"language": meta.get("language")})
+        pref_lang = preferred_language({"language": reading_lang(meta.get("language"))})
         with db.get_conn() as conn:
             cur = conn.execute(
                 """INSERT INTO books
                        (title, author, language, isbn, year, description, status,
                         library_path, progress, pref_language, source, series, series_index)
                    VALUES (?, ?, ?, ?, ?, ?, 'downloaded', ?, 1.0, ?, 'handmatig', ?, ?)""",
-                (title, author, meta.get("language"), meta.get("isbn") or None,
+                (title, author, reading_lang(meta.get("language")) or None, meta.get("isbn") or None,
                  meta.get("year"), meta.get("description") or None, str(p), pref_lang,
                  meta.get("series") or None, meta.get("series_index")),
             )
