@@ -178,6 +178,10 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   `search.json` (dat het werk met de titel van een willekeurige editie gaf, bv. de Spaanse). `search()`
   geeft bij een ISBN alleen de edities met precies die ISBN terug (`_isbn13` zet ISBN-10 om).
 - `search()` onthoudt een resultaat niet meer in `_cache` als een bron faalde.
+- v56 `_edition_quality()`: tiebreak om de "logische" uitgave bovenaan te krijgen — bonus voor de auteur die in de
+  resultaten het vaakst voorkomt (de echte auteur), voor een volledig ingevulde uitgave (isbn/cover/omschrijving/jaar);
+  malus (-0.9) voor boxsets/bundels/stripversies/scripts/samenvattingen (`_EDITION_NOISE_RE`, `_AUTHOR_NOISE_RE`),
+  tenzij dat woord in de zoekterm staat. Blijft onder 1 punt, dus een betere titel-match wint altijd.
 - v55 ranking (`_rank_by_relevance`): een bezittelijke titel ("Ender's Game", "Barney's Version") telt alleen als
   studiegids/companion als de eigenaar niet in de zoekterm staat (`_is_possessive_guide`); voorheen verdwenen
   alle "X's Y"-titels zodra er een ander resultaat >0.5 scoorde. Elk zoekwoord telt één keer (`len(tw|aw)`), zodat

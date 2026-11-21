@@ -134,6 +134,50 @@ def _rel_words(s):
             if w not in _REL_STOP and len(w) > 1]
 
 
+# Uitgaven die zelden "het boek zelf" zijn: boxsets, bundels, stripversies, scripts, samenvattingen
+_EDITION_NOISE_RE = re.compile(
+    r"(?i)(box(?:ed)? set|collection|omnibus|complete|ultimate|trilogy|quartet|bundle|"
+    r"graphic novel|screenplay|playtext|script|adaptation|manga|comic|illustrated|"
+    r"audio ?book|abridged|workbook|reviews?)")
+_AUTHOR_NOISE_RE = re.compile(
+    r"(?i)(study guides?|bookcaps|expert book reviews|sparknotes|cliffs|summary|staff|"
+    r"reviews?|publishing)")
+
+
+def _first_author(it):
+    return _norm_title((it.get("author") or "").split(",")[0])
+
+
+def _edition_quality(it, query, author_counts):
+    """Kleine bonus/malus om uit gelijkwaardige treffers de 'logische' uitgave te kiezen:
+    de auteur die in de resultaten het vaakst voorkomt (de échte auteur van het boek),
+    een volledig ingevulde uitgave, en geen boxset/stripversie/samenvatting.
+    Blijft onder 1 punt, zodat het nooit een betere titel-match overstemt."""
+    bonus = 0.0
+    fa = _first_author(it)
+    if fa:
+        bonus += 0.12 * min(author_counts.get(fa, 1) - 1, 5)
+    if it.get("isbn"):
+        bonus += 0.1
+    if it.get("cover_url"):
+        bonus += 0.05
+    if len(it.get("description") or "") > 50:
+        bonus += 0.1
+    if it.get("year"):
+        bonus += 0.05
+    title = it.get("title") or ""
+    q = (query or "").lower()
+    m = _EDITION_NOISE_RE.search(title)
+    noisy = bool(m and m.group(1).lower() not in q)
+    if title.count("/") or title.count(",") >= 2:          # "A / B / C" of een opsomming
+        noisy = True
+    if _AUTHOR_NOISE_RE.search(it.get("author") or ""):
+        noisy = True
+    if noisy:
+        bonus -= 0.9
+    return bonus
+
+
 def _rank_by_relevance(items, query):
     """Sorteer op hoe goed titel+auteur bij de zoekterm passen, en gooi
     resultaten weg die er niets mee te maken hebben ('Go Ask Alice' bij 'dune')."""
@@ -142,6 +186,11 @@ def _rank_by_relevance(items, query):
         return items
     qnorm = _norm_title(query)
     qset = set(qwords)
+    author_counts = {}
+    for it in items:
+        fa = _first_author(it)
+        if fa:
+            author_counts[fa] = author_counts.get(fa, 0) + 1
     scored = []
     for it in items:
         title = it.get("title") or ""
@@ -163,6 +212,7 @@ def _rank_by_relevance(items, query):
             score += 1                    # "titel auteur" gezocht en beide kloppen
         if title_hits == len(qset):
             score += 0.5
+        score += _edition_quality(it, query, author_counts)
         companion = bool(_COMPANION_RE.search(title) or _is_possessive_guide(title, qnorm))
         scored.append((score, companion, it))
     if not scored:
