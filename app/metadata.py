@@ -108,11 +108,25 @@ _REL_STOP = {"the", "a", "an", "of", "and", "to", "de", "het", "een", "en",
 
 # "over dit boek"-uitgaven i.p.v. het boek zelf
 _COMPANION_RE = re.compile(
-    r"(?i)\b(sparknotes|cliffs?notes|study guide|reader'?s guide|summary|analysis|"
+    r"(?i)\b(sparknotes|cliffs?notes|study guides?|reader'?s guide|summary|analysis|"
     r"companion|a guide to|guide to|adaptation|abridged|notes on|casebook|"
     r"critical (?:guide|edition|companion)|bright notes|coles notes|"
     r"colou?ring book|activity book|sticker book|quiz book)\b")
 _POSSESSIVE_RE = re.compile(r"(?i)^[a-z.\-' ]+'s\s+\S")  # "George Orwell's 1984"
+
+
+_POSSESSIVE_OWNER_RE = re.compile(r"(?i)^([a-z.\-' ]+?)'s\s")
+
+
+def _is_possessive_guide(title, qnorm):
+    """"George Orwell's 1984" is een boek óver 1984 — maar "Ender's Game" of
+    "Barney's Version" is gewoon de titel. Het is alleen een gids/companion als de
+    eigenaar ("George Orwell") niet in de zoekterm zelf voorkomt."""
+    if not _POSSESSIVE_RE.match(title):
+        return False
+    m = _POSSESSIVE_OWNER_RE.match(title)
+    owner = _norm_title(m.group(1)) if m else ""
+    return not (owner and owner in qnorm)
 
 
 def _rel_words(s):
@@ -134,20 +148,22 @@ def _rank_by_relevance(items, query):
         tnorm = _norm_title(title)
         twords = set(_rel_words(title))
         awords = set(_rel_words(it.get("author")))
-        title_hits = len(qset & twords)
-        author_hits = len(qset & awords)
+        tw, aw = qset & twords, qset & awords
+        title_hits, author_hits = len(tw), len(aw)
         if title_hits + author_hits == 0:
             continue                     # geen enkel zoekwoord terug -> weg
-        score = (title_hits + author_hits) / len(qset)
+        # elk zoekwoord telt één keer: bij "Mort" mag "Mort Walker" (in titel én
+        # auteur) niet hoger scoren dan het boek Mort zelf
+        score = len(tw | aw) / len(qset)
         if qnorm and qnorm == tnorm:
             score += 2                    # exacte titel
         elif qnorm and (tnorm.startswith(qnorm) or qnorm in tnorm):
             score += 1
-        if title_hits and author_hits:
+        if tw and (aw - tw):
             score += 1                    # "titel auteur" gezocht en beide kloppen
         if title_hits == len(qset):
             score += 0.5
-        companion = bool(_COMPANION_RE.search(title) or _POSSESSIVE_RE.match(title))
+        companion = bool(_COMPANION_RE.search(title) or _is_possessive_guide(title, qnorm))
         scored.append((score, companion, it))
     if not scored:
         return items                     # niets haalde het -> liever iets dan niets
@@ -724,6 +740,8 @@ def search(query: str, languages=None, limit: int = 12, deep: bool = False):
             "of gebruik 'Handmatig toevoegen'."
         )
 
+    for c in combined:
+        c["title"] = " ".join((c.get("title") or "").split())
     combined = [c for c in combined if c["title"]]
     combined = _dedupe(combined)
 

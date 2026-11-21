@@ -178,6 +178,10 @@ zijn er echte treffers, dan vallen die helemaal weg. Alleen-stopwoord-queries en
   `search.json` (dat het werk met de titel van een willekeurige editie gaf, bv. de Spaanse). `search()`
   geeft bij een ISBN alleen de edities met precies die ISBN terug (`_isbn13` zet ISBN-10 om).
 - `search()` onthoudt een resultaat niet meer in `_cache` als een bron faalde.
+- v55 ranking (`_rank_by_relevance`): een bezittelijke titel ("Ender's Game", "Barney's Version") telt alleen als
+  studiegids/companion als de eigenaar niet in de zoekterm staat (`_is_possessive_guide`); voorheen verdwenen
+  alle "X's Y"-titels zodra er een ander resultaat >0.5 scoorde. Elk zoekwoord telt één keer (`len(tw|aw)`), zodat
+  "Mort Walker" niet boven het boek Mort scoort; titels worden van regeleinden/dubbele spaties ontdaan.
 - v54: faalt een bron én is de rest leeg, dan `MetadataUnavailable` (502) i.p.v. een misleidend "niets gevonden";
   `_openlibrary_edition_raw` probeert één keer opnieuw bij connect-timeout; de UI toont een eigen melding als een ISBN
   nergens bekend is. Onderzocht en afgevallen als extra bron: Library of Congress (SRU geeft 0 records voor bekende ISBN's,
