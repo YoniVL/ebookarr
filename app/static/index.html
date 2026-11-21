@@ -294,7 +294,10 @@ select.field.sm{padding-right:10px}
 .rows .rowacts .ib:hover{background:var(--hi);color:var(--on-hi)}
 .rows .rowacts .ib-on{background:var(--accent);color:var(--on-accent)}
 .rows .rowacts .ib-danger:hover{background:var(--fail-fg)}
-.rows .rowcbx{flex:none}
+.rows .rowcbx{flex:none;display:flex;align-items:center;justify-content:center;width:28px}
+.cbx{padding:0}
+.rowcbx .cbx{display:grid;place-items:center}
+.rowcbx .cbx .i{width:16px;height:16px;display:block}
 @media (max-width:900px){.rows .card{flex-wrap:wrap}.rows .rmid{width:auto}}
 
 /* selectiebalk + opslaan-balk (zwevend) */
