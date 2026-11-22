@@ -474,3 +474,5 @@ Gegevens aanpassen: POST /api/books/{id}/metadata (services.update_book_metadata
 Eigen cover: POST/DELETE /api/books/{id}/cover (data-URL of link; opgeslagen in covers/, kolom books.custom_cover, migratie m012), GET /api/books/{id}/cover-file. Wordt ook in het epub geschreven en in OPDS gebruikt. Bediening in het Gegevens-aanpassen-venster.
 
 Kindle-verzending: epub wordt vlak voor het mailen in een tijdelijke kopie opgeschoond (mapitems en verdachte bestanden zoals oceanofpdf.com eruit; Gmail blokkeert zip-bestanden met .com/.exe/.js), korte pauze tussen mails, nette foutmeldingen, bevestiging bij >25 boeken.
+
+Kindle: hoofdstukbestanden zonder .html-extensie (bv. .html_split_000, geeft Amazon-fout E016 = vaste lay-out) worden bij het versturen in de tijdelijke kopie hernoemd naar .xhtml (verwijzingen in opf/ncx/html mee aangepast).

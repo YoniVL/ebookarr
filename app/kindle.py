@@ -33,6 +33,30 @@ class KindleError(Exception):
     pass
 
 
+def _bad_named_items(zin, names, dropped):
+    """Hoofdstukbestanden zonder .html-extensie (bv. '.html_split_000'): Amazon
+    herkent die niet en levert het boek dan af als vaste lay-out (fout E016).
+    Geeft {oude basisnaam: nieuwe basisnaam}."""
+    opf = next((n for n in names if n.lower().endswith(".opf")), None)
+    if not opf:
+        return {}
+    txt = zin.read(opf).decode("utf-8", "ignore")
+    out = {}
+    for m in re.finditer(r"<item[^>]*>", txt):
+        tag = m.group(0)
+        if "application/xhtml+xml" not in tag:
+            continue
+        h = re.search(r'href="([^"]+)"', tag)
+        if not h:
+            continue
+        base = posixpath.basename(h.group(1).split("#")[0])
+        if base and not re.search(r"\.(x?html?|xml)$", base, re.I):
+            out[base] = base.lstrip(".") + ".xhtml"
+    # alleen als de nieuwe naam nergens al bestaat
+    existing = {posixpath.basename(n) for n in names}
+    return {o: n for o, n in out.items() if n not in existing}
+
+
 def clean_epub(path: Path) -> bytes:
     """Her-verpak het epub zonder mapitems en zonder verdachte bestanden (de
     originele blijft ongemoeid). Bij een kapot zip-bestand: de ruwe bytes."""
@@ -41,6 +65,7 @@ def clean_epub(path: Path) -> bytes:
         zin = zipfile.ZipFile(io.BytesIO(raw))
         names = [n for n in zin.namelist() if not n.endswith("/")]
         dropped = [n for n in names if posixpath.splitext(n)[1].lower() in BAD_EXT]
+        renames = _bad_named_items(zin, names, dropped)
         out = io.BytesIO()
         with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
             if "mimetype" in names:       # moet eerst en onaangepast (stored)
@@ -49,13 +74,21 @@ def clean_epub(path: Path) -> bytes:
                 if n == "mimetype" or n in dropped:
                     continue
                 data = zin.read(n)
+                if renames and n.lower().endswith((".opf", ".ncx", ".xhtml", ".html", ".htm", ".xml")):
+                    txt = data.decode("utf-8", "ignore")
+                    for old_b, new_b in renames.items():
+                        txt = re.sub(r"(?<![\w.\-])" + re.escape(old_b) + r"(?![\w.\-])", new_b, txt)
+                    data = txt.encode("utf-8")
                 if n.lower().endswith(".opf") and dropped:
                     txt = data.decode("utf-8", "ignore")
                     for d in dropped:
                         base = re.escape(posixpath.basename(d))
-                        txt = re.sub(r'<item[^>]*href="[^"]*' + base + r'"[^>]*/?>', "", txt)
+                        txt = re.sub(r'<item[^>]*href="[^"]*' + base + r'"[^>]*/?>', "", txt)
                     data = txt.encode("utf-8")
-                zout.writestr(n, data)
+                zout.writestr(posixpath.join(posixpath.dirname(n), renames[posixpath.basename(n)])
+                              if posixpath.basename(n) in renames else n, data)
+        if renames:
+            log.info("Kindle: %d bestandsnamen zonder extensie hersteld in %s", len(renames), path.name)
         if dropped:
             log.info("Kindle: %s uit %s gehaald voor het versturen", ", ".join(dropped), path.name)
         return out.getvalue()
