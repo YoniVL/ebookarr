@@ -548,7 +548,6 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
         <button class="chip chip-on filter-btn" data-filter="all" aria-pressed="true" onclick="setFilter('all')">Alles <b>0</b></button>
         <button class="chip filter-btn" data-filter="wanted" aria-pressed="false" onclick="setFilter('wanted')">Gewenst <b>0</b></button>
         <button class="chip filter-btn" data-filter="searching" aria-pressed="false" onclick="setFilter('searching')">Zoeken <b>0</b></button>
-        <button class="chip filter-btn" data-filter="downloading" aria-pressed="false" onclick="setFilter('downloading')">Downloadt <b>0</b></button>
         <button class="chip filter-btn" data-filter="downloaded" aria-pressed="false" onclick="setFilter('downloaded')">Binnen <b>0</b></button>
         <button class="chip filter-btn" data-filter="failed" aria-pressed="false" onclick="setFilter('failed')">Mislukt <b>0</b></button>
       </div>
@@ -588,8 +587,6 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
     <h1 class="ptitle">Activity</h1>
     <h2 class="sect"><svg class="i" aria-hidden="true"><use href="#i-activity"/></svg>Nu aan het zoeken</h2>
     <div id="activity-searching"></div>
-    <h2 class="sect"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Downloads bezig</h2>
-    <div id="activity-downloads"></div>
     <h2 class="sect"><svg class="i" aria-hidden="true"><use href="#i-clock"/></svg>Recent</h2>
     <div class="chips" role="group" aria-label="Filter recente gebeurtenissen" style="margin-bottom:16px">
       <button class="chip chip-on rec-filter" data-rf="all" aria-pressed="true" onclick="setRecFilter('all')">Alles</button>
@@ -636,8 +633,6 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
   <section id="settings" class="panel" aria-label="Instellingen">
     <h1 class="ptitle">Instellingen</h1>
     <nav class="subnav" aria-label="Secties">
-      <a href="#set-prowlarr">Prowlarr</a>
-      <a href="#set-qbit">qBittorrent</a>
       <a href="#set-zoeken">Zoeken</a>
       <a href="#set-bronnen">Downloadbronnen</a>
       <a href="#set-bib">Bibliotheek</a>
@@ -645,37 +640,11 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
       <a href="#set-opds">Leesapps</a>
     </nav>
 
-    <section class="setcard" id="set-prowlarr">
-      <h2>Prowlarr</h2>
-      <label class="fl" for="prowlarr_url">Prowlarr URL</label>
-      <input class="field" id="prowlarr_url" placeholder="http://localhost:9696">
-      <label class="fl" for="prowlarr_api_key">Prowlarr API key</label>
-      <input class="field" id="prowlarr_api_key" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen">
-      <div class="hint" id="prowlarr_api_key_hint"></div>
-      <div style="margin-top:20px"><button class="btn" onclick="testProwlarr()"><svg class="i" aria-hidden="true"><use href="#i-server"/></svg>Verbinding testen</button></div>
-    </section>
-
-    <section class="setcard" id="set-qbit">
-      <h2>qBittorrent</h2>
-      <label class="fl" for="qbittorrent_url">Web UI URL</label>
-      <input class="field" id="qbittorrent_url" placeholder="http://localhost:8080">
-      <div class="fgrid">
-        <div><label class="fl" for="qbittorrent_username">Gebruikersnaam</label><input class="field" id="qbittorrent_username" autocomplete="off"></div>
-        <div><label class="fl" for="qbittorrent_password">Wachtwoord</label><input class="field" id="qbittorrent_password" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen"></div>
-      </div>
-      <div class="hint" id="qbittorrent_password_hint"></div>
-      <div style="margin-top:20px"><button class="btn" onclick="testQbittorrent()"><svg class="i" aria-hidden="true"><use href="#i-server"/></svg>Verbinding testen</button></div>
-    </section>
-
     <section class="setcard" id="set-zoeken">
       <h2>Zoeken &amp; downloaden</h2>
       <div class="fgrid">
         <div><label class="fl" for="search_interval_hours">Automatisch zoeken — interval (uren)</label><input class="field" id="search_interval_hours" type="number" min="1" value="6"></div>
-        <div><label class="fl" for="min_seeders">Minimum aantal seeders</label><input class="field" id="min_seeders" type="number" min="0" value="1"></div>
-        <div><label class="fl" for="stalled_hours">Vastgelopen na (uren zonder seeders)</label><input class="field" id="stalled_hours" type="number" min="1" value="24"></div>
-        <div><label class="fl" for="prowlarr_categories">Prowlarr-categorieën</label><input class="field" id="prowlarr_categories" placeholder="7000,7020"></div>
       </div>
-      <div class="hint">Torznab-ids, komma-gescheiden. 7000 = Books, 7020 = Books/EBook. Leeg = alle categorieën.</div>
       <label class="crow" style="margin-top:24px"><input type="checkbox" id="auto_download"><span>Beste release automatisch downloaden</span></label>
       <label class="crow" style="margin-top:16px"><input type="checkbox" id="accept_kindle"><span>Ook Kindle-formaten (mobi/azw3) accepteren en bij importeren naar epub converteren</span></label>
       <div class="hint" id="calibre_hint"></div>
@@ -687,7 +656,7 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
 
     <section class="setcard" id="set-bronnen">
       <h2>Downloadbronnen</h2>
-      <p class="sub">Er wordt in deze volgorde gezocht; zodra een bron een bruikbare epub oplevert, stopt het zoeken. Torrents (Prowlarr) zijn altijd de laatste redmiddel.</p>
+      <p class="sub">Er wordt in deze volgorde gezocht; zodra een bron een bruikbare epub oplevert, stopt het zoeken.</p>
       <div class="srclist">
         <div class="src"><div class="srow"><span class="num">1</span><label class="sn" for="src_gutenberg">Project Gutenberg<small>klassiekers, publiek domein</small></label><input type="checkbox" class="sw" id="src_gutenberg" role="switch"></div></div>
         <div class="src"><div class="srow"><span class="num">2</span><label class="sn" for="src_standardebooks">Standard Ebooks<small>mooi opgemaakte publiek-domein epubs</small></label><input type="checkbox" class="sw" id="src_standardebooks" role="switch"></div></div>
@@ -706,10 +675,6 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
             <input class="field" id="zlib_domain" placeholder="domein vastzetten (leeg = automatisch)" style="margin-top:12px">
             <div class="hint" id="zlib_hint"></div>
           </div>
-        </div>
-        <div class="src">
-          <div class="srow"><span class="num">5</span><label class="sn" for="annas_key">Anna's Archive<small>member-key, optioneel — leeg = uit</small></label></div>
-          <div class="sub"><input class="field" id="annas_key" type="password" autocomplete="new-password" placeholder="alleen nodig met betaald lidmaatschap"></div>
         </div>
       </div>
     </section>
@@ -1031,7 +996,7 @@ function searchPhaseText(info) {
   const auto = info.trigger === 'automatisch' ? ' · automatisch' : '';
   return `${info.phase}${auto}`;
 }
-const SRC_LABELS = { gutenberg:'Gutenberg', standardebooks:'Standard Ebooks', libgen:'LibGen', zlibrary:'Z-Library', prowlarr:'Torrent' };
+const SRC_LABELS = { gutenberg:'Gutenberg', standardebooks:'Standard Ebooks', libgen:'LibGen', zlibrary:'Z-Library' };
 
 /* ================= zoek-voortgang + polling ================= */
 let searchingById = {};
@@ -1080,7 +1045,7 @@ async function loadStatus() {
         zlChip = chip('Z-Library', zl, (zl === 'ok' && q && q.limit && q.left <= 2) ? ` · nog ${q.left} vandaag` : '', detail || 'Z-Library');
     }
     $('health').title = `Laatst gezocht: ${last} · v${s.version || '?'}`;
-    $('health').innerHTML = chip('Prowlarr', s.prowlarr) + chip('qBittorrent', s.qbittorrent) + zlChip + searchChip;
+    $('health').innerHTML = zlChip + searchChip;
   } catch (e) { /* stil */ }
 }
 
@@ -1102,18 +1067,6 @@ async function loadActivity() {
     ? `<div class="actgrid">${items.map(x => actCard(booksById[x.book_id], x.title, '',
         `<div class="cstatus is-search"><span class="dot pulse"></span>${escapeHtml(searchPhaseText(x))}…</div>`)).join('')}</div>`
     : `<div class="empty sm">${icon('activity')}<span>Er wordt nu nergens actief naar gezocht.</span></div>`;
-
-  $('activity-downloads').innerHTML = a.downloads.length
-    ? `<div class="actgrid">${a.downloads.map(d => {
-        const pct = Math.round((d.progress || 0) * 100);
-        const body = d.status === 'failed'
-          ? `<div class="cstatus is-fail clamp">${escapeHtml(d.last_error || 'mislukt')}</div>`
-          : `<div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Voortgang"><span style="width:${pct}%"></span></div>
-             <div class="cstatus is-dl">${pct}% · ${escapeHtml(d.state || '')} · ${formatSpeed(d.dlspeed)} · ETA ${formatEta(d.eta)} · ${d.num_seeds ?? 0} seeds · ${formatSize(d.size)}</div>
-             ${d.release ? `<div class="cstatus" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.release)}</div>` : ''}`;
-        return actCard(booksById[d.id], d.title, d.author, body);
-      }).join('')}</div>`
-    : `<div class="empty sm">${icon('download')}<span>Geen downloads bezig.</span></div>`;
 
   recData = a.recent || [];
   renderRecent();
@@ -2115,13 +2068,7 @@ async function loadSettings() {
   const s = await (await fetch('/api/settings')).json();
   const set = (id, v) => { const el = $(id); if (el) el.value = v ?? ''; };
   const chk = (id, v) => { $(id).checked = String(v) === '1' || v === true; };
-  set('prowlarr_url', s.prowlarr_url);
-  set('qbittorrent_url', s.qbittorrent_url);
-  set('qbittorrent_username', s.qbittorrent_username);
   set('search_interval_hours', s.search_interval_hours || 6);
-  set('min_seeders', s.min_seeders ?? 1);
-  set('prowlarr_categories', s.prowlarr_categories || '');
-  set('stalled_hours', s.stalled_hours || 24);
   set('library_folder', s.library_folder || '');
   set('calibre_path', s.calibre_path || '');
   const langs = (s.reading_languages || 'en,nl').split(',');
@@ -2144,17 +2091,12 @@ async function loadSettings() {
   s.opds_password_set
     ? setHint('opds_hint', 'ok', 'beveiligd — vul in je leesapp deze gebruikersnaam en je wachtwoord in.')
     : setHint('opds_hint', '', 'Zonder wachtwoord: iedereen op je netwerk kan je bibliotheek zien. Voor thuisgebruik meestal prima.');
-  $('prowlarr_api_key').value = '';
-  $('qbittorrent_password').value = '';
-  s.prowlarr_api_key_set ? setHint('prowlarr_api_key_hint', 'ok', 'opgeslagen (laat leeg om te behouden)') : setHint('prowlarr_api_key_hint', 'bad', 'nog niets opgeslagen');
-  s.qbittorrent_password_set ? setHint('qbittorrent_password_hint', 'ok', 'opgeslagen (laat leeg om te behouden)') : setHint('qbittorrent_password_hint', 'bad', 'nog niets opgeslagen');
   chk('src_gutenberg', s.src_gutenberg); chk('src_standardebooks', s.src_standardebooks);
   chk('src_libgen', s.src_libgen); chk('src_zlibrary', s.src_zlibrary);
   set('libgen_mirror', s.libgen_mirror || '');
   set('zlib_domain', s.zlib_domain || '');
   $('zlib_email').value = '';
   $('zlib_password').value = '';
-  $('annas_key').value = '';
   $('google_books_key').value = '';
   $('nyt_api_key').value = '';
   s.nyt_api_key_set ? setHint('nyt_api_key_hint', 'ok', 'opgeslagen (laat leeg om te behouden)') : setHint('nyt_api_key_hint', '', 'Nog geen sleutel — de NYT-lijsten bij Ontdekken blijven dan uit.');
@@ -2177,21 +2119,13 @@ async function loadSettings() {
 
 function settingsPayload() {
   return {
-    prowlarr_url: $('prowlarr_url').value.trim(),
-    prowlarr_api_key: $('prowlarr_api_key').value,
-    qbittorrent_url: $('qbittorrent_url').value.trim(),
-    qbittorrent_username: $('qbittorrent_username').value.trim(),
-    qbittorrent_password: $('qbittorrent_password').value,
     search_interval_hours: parseInt($('search_interval_hours').value) || 6,
     auto_download: $('auto_download').checked,
-    min_seeders: parseInt($('min_seeders').value) || 0,
-    prowlarr_categories: $('prowlarr_categories').value.trim(),
     library_folder: $('library_folder').value.trim(),
     reading_languages: [
       $('lang_en').checked ? 'en' : '',
       $('lang_nl').checked ? 'nl' : '',
     ].filter(Boolean).join(',') || 'en,nl',
-    stalled_hours: parseInt($('stalled_hours').value) || 24,
     accept_kindle: $('accept_kindle').checked,
     calibre_path: $('calibre_path').value.trim(),
     embed_metadata: $('embed_metadata').checked,
@@ -2206,7 +2140,6 @@ function settingsPayload() {
     zlib_domain: $('zlib_domain').value.trim(),
     zlib_email: $('zlib_email').value.trim(),
     zlib_password: $('zlib_password').value,
-    annas_key: $('annas_key').value.trim(),
     google_books_key: $('google_books_key').value.trim(),
     nyt_api_key: $('nyt_api_key').value.trim(),
     kindle_email: $('kindle_email').value.trim(),
@@ -2229,20 +2162,6 @@ async function saveSettings() {
   const t = new Date().toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
   showMsg('ok', `Instellingen opgeslagen om ${t}.`);
   loadSettings(); loadStatus();
-}
-async function testProwlarr() {
-  await saveSettingsQuiet();
-  const res = await fetch('/api/settings/test-prowlarr', { method:'POST' });
-  const d = await res.json();
-  showMsg(res.ok ? 'ok' : 'err', res.ok ? `Verbonden! Prowlarr ${d.version}` : d.detail);
-  loadStatus();
-}
-async function testQbittorrent() {
-  await saveSettingsQuiet();
-  const res = await fetch('/api/settings/test-qbittorrent', { method:'POST' });
-  const d = await res.json();
-  showMsg(res.ok ? 'ok' : 'err', res.ok ? `Verbonden! qBittorrent ${d.version}` : d.detail);
-  loadStatus();
 }
 async function testGoogle() {
   await saveSettingsQuiet();

@@ -1,4 +1,4 @@
-"""Downloadbronnen. Vaste prioriteitsvolgorde; torrents (Prowlarr) altijd laatst.
+"""Downloadbronnen. Vaste prioriteitsvolgorde.
 
 Elke bron-module heeft:
   NAME, LABEL, enabled() -> bool, search(book) -> list[candidate]
@@ -6,12 +6,12 @@ Directe bronnen ook: download(candidate, dest_dir) -> Path
 """
 import logging
 
-from . import gutenberg, libgen, prowlarr_src, standardebooks, zlibrary
+from . import gutenberg, libgen, standardebooks, zlibrary
 
 log = logging.getLogger("ebookarr.sources")
 
-# Prioriteitsvolgorde: gratis/legaal eerst, dan schaduwbibliotheken, dan torrents.
-REGISTRY = [gutenberg, standardebooks, libgen, zlibrary, prowlarr_src]
+# Prioriteitsvolgorde: gratis/legaal eerst, dan schaduwbibliotheken.
+REGISTRY = [gutenberg, standardebooks, libgen, zlibrary]
 
 _BY_NAME = {m.NAME: m for m in REGISTRY}
 

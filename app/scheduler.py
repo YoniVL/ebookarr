@@ -25,15 +25,6 @@ def _search_job():
         log.exception("Onverwachte fout in zoekronde")
 
 
-def _poll_job():
-    try:
-        services.poll_downloads(trigger="scheduler")
-    except services.ConfigError:
-        pass
-    except Exception:
-        log.exception("Onverwachte fout bij downloads volgen")
-
-
 def _backup_job():
     try:
         db.backup(keep=7)
@@ -50,14 +41,13 @@ def start():
     )
     hours = max(1, services.int_setting("search_interval_hours", 6))
     _scheduler.add_job(_search_job, "interval", hours=hours, id="search")
-    _scheduler.add_job(_poll_job, "interval", minutes=1, id="poll")
     _scheduler.add_job(_backup_job, "interval", hours=24, id="backup")
 
     now = datetime.now(timezone.utc)
     _scheduler.add_job(_search_job, "date", run_date=now + timedelta(seconds=25), id="search_startup")
     _scheduler.add_job(_backup_job, "date", run_date=now + timedelta(seconds=40), id="backup_startup")
     _scheduler.start()
-    log.info("Scheduler gestart (zoeken elke %s uur; downloads volgen 1/min; back-up 1/dag)", hours)
+    log.info("Scheduler gestart (zoeken elke %s uur; back-up 1/dag)", hours)
 
 
 def apply_settings():

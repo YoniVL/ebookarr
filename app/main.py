@@ -45,18 +45,10 @@ class BookIn(BaseModel):
 
 
 class SettingsIn(BaseModel):
-    prowlarr_url: str
-    prowlarr_api_key: str = ""
-    qbittorrent_url: str
-    qbittorrent_username: str
-    qbittorrent_password: str = ""
     search_interval_hours: int = 6
     auto_download: bool = True
-    min_seeders: int = 1
-    prowlarr_categories: str = "7000,7020"
     library_folder: str = ""
     reading_languages: str = "en,nl"
-    stalled_hours: int = 24
     accept_kindle: bool = False
     calibre_path: str = ""
     embed_metadata: bool = True
@@ -71,7 +63,6 @@ class SettingsIn(BaseModel):
     zlib_domain: str = ""
     zlib_email: str = ""
     zlib_password: str = ""
-    annas_key: str = ""
     google_books_key: str = ""
     nyt_api_key: str = ""
     kindle_email: str = ""
@@ -154,15 +145,12 @@ def _clean_langs(value: str):
 @app.get("/api/settings")
 def get_settings():
     s = db.get_all_settings()
-    for k in ("qbittorrent_password", "prowlarr_api_key", "zlib_password",
-              "zlib_email", "annas_key", "zlib_session", "opds_password",
+    for k in ("zlib_password",
+              "zlib_email", "zlib_session", "opds_password",
               "google_books_key", "smtp_password", "nyt_api_key"):
         s.pop(k, None)
-    s["qbittorrent_password_set"] = bool(db.get_setting("qbittorrent_password"))
-    s["prowlarr_api_key_set"] = bool(db.get_setting("prowlarr_api_key"))
     s["zlib_password_set"] = bool(db.get_setting("zlib_password"))
     s["zlib_email_set"] = bool(db.get_setting("zlib_email"))
-    s["annas_key_set"] = bool(db.get_setting("annas_key"))
     s["google_books_key_set"] = bool(db.get_setting("google_books_key"))
     s["nyt_api_key_set"] = bool(db.get_setting("nyt_api_key"))
     s["smtp_password_set"] = bool(db.get_setting("smtp_password"))
@@ -187,16 +175,10 @@ def _lan_ip():
 
 @app.post("/api/settings")
 def save_settings(payload: SettingsIn):
-    db.set_setting("prowlarr_url", payload.prowlarr_url)
-    db.set_setting("qbittorrent_url", payload.qbittorrent_url)
-    db.set_setting("qbittorrent_username", payload.qbittorrent_username)
     db.set_setting("search_interval_hours", str(payload.search_interval_hours))
     db.set_setting("auto_download", "1" if payload.auto_download else "0")
-    db.set_setting("min_seeders", str(payload.min_seeders))
-    db.set_setting("prowlarr_categories", payload.prowlarr_categories.strip())
     db.set_setting("library_folder", payload.library_folder.strip())
     db.set_setting("reading_languages", _clean_langs(payload.reading_languages))
-    db.set_setting("stalled_hours", str(payload.stalled_hours))
     db.set_setting("accept_kindle", "1" if payload.accept_kindle else "0")
     db.set_setting("calibre_path", payload.calibre_path.strip())
     db.set_setting("embed_metadata", "1" if payload.embed_metadata else "0")
@@ -209,11 +191,8 @@ def save_settings(payload: SettingsIn):
 
     # Lege / placeholder-secrets laten de opgeslagen waarde ongemoeid
     for key, val in (
-        ("prowlarr_api_key", payload.prowlarr_api_key),
-        ("qbittorrent_password", payload.qbittorrent_password),
         ("zlib_email", payload.zlib_email),
         ("zlib_password", payload.zlib_password),
-        ("annas_key", payload.annas_key),
         ("google_books_key", payload.google_books_key.strip()),
     ):
         if val and val != _SECRET_PLACEHOLDER:
@@ -241,17 +220,6 @@ def save_settings(payload: SettingsIn):
 
     scheduler.apply_settings()
     return {"ok": True}
-
-
-@app.post("/api/settings/test-prowlarr")
-def test_prowlarr():
-    try:
-        status = services.get_prowlarr().test_connection()
-        return {"ok": True, "version": status.get("version")}
-    except services.ConfigError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post("/api/settings/test-google")
@@ -328,17 +296,6 @@ def charts_list(list_id: str, refresh: bool = False):
 def charts_describe(payload: DescribeIn):
     return charts.describe(payload.title, payload.author, payload.isbn,
                            str(payload.apple_id or ""), payload.country, payload.language)
-
-
-@app.post("/api/settings/test-qbittorrent")
-def test_qbittorrent():
-    try:
-        version = services.get_qbittorrent().test_connection()
-        return {"ok": True, "version": version}
-    except services.ConfigError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.get("/api/status")

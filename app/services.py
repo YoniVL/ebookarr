@@ -1728,26 +1728,7 @@ def delete_books(ids, delete_files=False):
 # ---------- Status ----------
 
 def health():
-    out = {
-        "prowlarr": "unconfigured",
-        "qbittorrent": "unconfigured",
-        "last_search_run": db.get_setting("last_search_run"),
-    }
-    try:
-        get_prowlarr().test_connection()
-        out["prowlarr"] = "ok"
-    except ConfigError:
-        pass
-    except Exception as e:
-        out["prowlarr"] = f"error: {e}"
-    try:
-        get_qbittorrent().test_connection()
-        out["qbittorrent"] = "ok"
-    except ConfigError:
-        pass
-    except Exception as e:
-        out["qbittorrent"] = f"error: {e}"
-
+    out = {"last_search_run": db.get_setting("last_search_run")}
     try:
         st, detail = sources.zlibrary.status()
         out["zlibrary"] = f"error: {detail}" if st == "error" else st
