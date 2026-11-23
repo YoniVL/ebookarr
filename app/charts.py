@@ -37,7 +37,8 @@ class ChartError(Exception):
 REGIONS = [
     ("us", "Engels · VS"),
     ("uk", "Engels · VK"),
-    ("nl", "Nederlands"),
+    ("nl", "Nederlands · NL"),
+    ("be", "Nederlands · Vlaanderen"),
     ("world", "Trending"),
 ]
 
@@ -51,6 +52,13 @@ LISTS = [
     ("nyt-hardcover-nonfiction", "us", "New York Times", "Hardcover · Non-fictie", "en"),
     ("nyt-combined-fiction", "us", "New York Times", "Print & e-book · Fictie", "en"),
     ("nyt-combined-nonfiction", "us", "New York Times", "Print & e-book · Non-fictie", "en"),
+    ("bks-4", "uk", "Official UK Top 50", "Alles (top 5)", "en"),
+    ("bks-11", "uk", "Official Charts", "Fictie · Original (top 5)", "en"),
+    ("bks-10", "uk", "Official Charts", "Fictie · Mass-Market (top 5)", "en"),
+    ("bks-9", "uk", "Official Charts", "Non-fictie · Hardback (top 5)", "en"),
+    ("bks-12", "uk", "Official Charts", "Non-fictie · Paperback (top 5)", "en"),
+    ("bks-14", "uk", "Official Charts", "Onafhankelijke boekhandels (top 5)", "en"),
+    ("bks-15", "uk", "Official Charts", "E-books (top 5)", "en"),
     ("apple-gb-top", "uk", "Apple Books VK", "Top betaald · Alles", "en"),
     ("apple-gb-fiction", "uk", "Apple Books VK", "Fictie", "en"),
     ("apple-gb-nonfiction", "uk", "Apple Books VK", "Non-fictie", "en"),
@@ -58,6 +66,9 @@ LISTS = [
     ("b60-non-fictie", "nl", "Bestseller 60", "Non-fictie", "nl"),
     ("b60-spannend", "nl", "Bestseller 60", "Spanning", "nl"),
     ("b60-all", "nl", "Bestseller 60", "Totaal top 60", "nl"),
+    ("sb-fictie", "be", "Standaard Boekhandel", "Top 10 · Fictie", "nl"),
+    ("sb-non-fictie", "be", "Standaard Boekhandel", "Top 10 · Non-fictie", "nl"),
+    ("sb-e-books", "be", "Standaard Boekhandel", "Top 10 · E-books", "nl"),
     ("ol-weekly", "world", "Open Library", "Trending deze week", "en"),
     ("ol-daily", "world", "Open Library", "Trending vandaag", "en"),
 ]
@@ -234,6 +245,62 @@ def _b60(slug):
     return items, (f"week {wk.group(1)} - {wk.group(2)}" if wk else ""), url
 
 
+# ---------- The Bookseller: Official UK charts (Nielsen BookScan) ----------
+
+def _bookseller(code):
+    url = f"https://www.thebookseller.com/bestsellers?ChartCode={code}"
+    h = _get(url).text
+    wk = re.search(r'<option value="\d+"\s+selected\s*>\s*(\d{1,2} [A-Za-z]+)\s*<', h)
+    items = []
+    for chunk in h.split('class="aos-Position')[1:]:
+        m = re.search(r">\s*(\d+)\s*</span>", chunk)
+        title = re.search(r'class="aos-ArticleTitle[^>]*>(.*?)</h2>', chunk, re.S)
+        author = re.search(r'class="aos-ArticleAuthor[^>]*>(.*?)</span>', chunk, re.S)
+        isbn = re.search(r"ISBN:\s*</span>\s*(\d{10,13})", chunk)
+        img = re.search(r'<img src="(https://[^"]+)"', chunk)
+        if not (m and title):
+            continue
+        au = _clean(author.group(1)) if author else ""
+        items.append({"rank": int(m.group(1)), "title": _clean(title.group(1)),
+                      "author": au.replace(";", ",") if au else "",
+                      "isbn": isbn.group(1) if isbn else None,
+                      "cover_url": img.group(1) if img else None})
+    if not items:
+        raise ChartError("De Bookseller-pagina had een andere opbouw dan verwacht.")
+    return items, (("week van " + wk.group(1)) if wk else "meest recente week") + f" · alleen de top {len(items)} is gratis (de rest vraagt een abonnement bij The Bookseller)", url
+
+
+# ---------- Standaard Boekhandel (Vlaanderen) ----------
+
+def _standaard(slug):
+    url = "https://www.standaardboekhandel.be/c/boeken-ff70aa56/Bestsellers/Bestsellers-" + slug
+    h = _get(url).text
+    i = h.find("c-top-products__items")
+    seg = h[i:] if i >= 0 else h
+    items, seen = [], set()
+    for chunk in seg.split('class="c-product__position">')[1:]:
+        m = re.match(r"\s*(\d+)", chunk)
+        if not m or int(m.group(1)) in seen:
+            break
+        title = re.search(r'class="c-product__title[^>]*title="([^"]*)"', chunk)
+        author = re.search(r'c-product__subtitle[^>]*>.*?<a[^>]*>(.*?)</a>', chunk, re.S)
+        isbn = re.search(r"/p/[^\"]*?(97[89]\d{10})", chunk)
+        img = None
+        prev = seg[max(0, seg.find('class="c-product__position">' + m.group(1)) - 700):seg.find('class="c-product__position">' + m.group(1))]
+        im = re.findall(r'<img src="(https://cdn\.standaardboekhandel\.be/product/[^"]+)"', prev)
+        if im:
+            img = im[-1].replace("front-small", "front-medium")
+        seen.add(int(m.group(1)))
+        if not title:
+            continue
+        items.append({"rank": int(m.group(1)), "title": _clean(title.group(1)),
+                      "author": _clean(author.group(1)) if author else "",
+                      "isbn": isbn.group(1) if isbn else None, "cover_url": img})
+    if not items:
+        raise ChartError("De pagina van Standaard Boekhandel had een andere opbouw dan verwacht.")
+    return items, "top 10 van deze week", url
+
+
 # ---------- Open Library ----------
 
 def _ol(period):
@@ -285,6 +352,10 @@ def _fetch_list(list_id, meta):
         items, when, url = _apple_genre("gb", "fiction-and-literature", 9031)
     elif list_id == "apple-gb-nonfiction":
         items, when, url = _apple_genre("gb", "non-fiction", 9002)
+    elif list_id.startswith("bks-"):
+        items, when, url = _bookseller(list_id[4:])
+    elif list_id.startswith("sb-"):
+        items, when, url = _standaard(list_id[3:].capitalize() if list_id[3:] != "non-fictie" else "Non-fictie")
     elif list_id == "b60-all":
         items, when, url = _b60("")
     elif list_id.startswith("b60-"):

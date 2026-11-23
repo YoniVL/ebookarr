@@ -479,3 +479,5 @@ Kindle: hoofdstukbestanden zonder .html-extensie (bv. .html_split_000, geeft Ama
 
 ## Ontdekken (2026.11.23-71)
 Tabblad Ontdekken (app/charts.py): bestsellerlijsten per regio — Engels VS (Amazon Charts meest verkocht/gelezen fictie+non-fictie; NYT via gratis API-sleutel nyt_api_key), Engels VK (Apple Books top/fictie/non-fictie), Nederlands (Bestseller 60 CPNB: fictie/non-fictie/spanning/totaal), Trending (Open Library). Endpoints: GET /api/charts, GET /api/charts/{id}, POST /api/charts/describe (beschrijving/ISBN lui per boek), POST /api/settings/test-nyt. Lijsten 6u gecachet (kv_cache) met oude kopie als de bron faalt. Alleen handmatig toevoegen.
+
+Ontdekken uitgebreid: VK = Official UK charts via The Bookseller (Nielsen BookScan; alleen top 5 gratis, rest achter abonnement) naast Apple Books; Vlaanderen = Standaard Boekhandel top 10 (fictie/non-fictie/e-books). Niet bereikbaar (bot-blokkade/abonnement): Waterstones, Foyles, Blackwells, Hive, WHSmith, Sunday Times, Bol.com, Bruna.
