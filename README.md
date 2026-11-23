@@ -3,10 +3,9 @@
 Een kleine, zelfgebouwde "Sonarr voor ebooks": je zoekt een boek op, zet het op
 een wanted-lijst, en EbookArr zoekt zelf periodiek naar een **epub**. Het
 probeert meerdere bronnen op volgorde — eerst gratis, legale bronnen
-(Project Gutenberg, Standard Ebooks), dan LibGen en Z-Library, en pas als laatste
-**torrents via Prowlarr/qBittorrent**. Directe downloads komen meteen in je
-bibliotheekmap; alleen torrents lopen via qBittorrent. Je kunt ook auteurs en
-reeksen volgen.
+(Project Gutenberg, Standard Ebooks), dan LibGen en Z-Library. Downloads komen
+meteen in je bibliotheekmap. Bij **Ontdekken** vind je bestsellerlijsten, en met
+**Kindle** stuur je boeken naar je e-reader.
 
 Draait lokaal op Windows, zonder Docker — net als je Sonarr/Radarr setup.
 
@@ -27,19 +26,12 @@ Draait lokaal op Windows, zonder Docker — net als je Sonarr/Radarr setup.
 
 Ga naar **Instellingen**:
 
-- **Prowlarr URL / API key** — de key staat in Prowlarr onder `Settings > General`.
-- **qBittorrent URL** — de Web UI-URL. Kijk in qBittorrent onder
-  `Tools > Opties > Web UI` welke **poort** daar staat en gebruik
-  `http://localhost:<poort>`.
-- **qBittorrent gebruikersnaam/wachtwoord** — je Web UI-login.
 - **Automatisch zoeken – interval** — om de hoeveel uur EbookArr zelf zoekt.
 - **Beste epub-release automatisch downloaden** — aan = volautomatisch.
-- **Minimum aantal seeders** — releases met minder seeders worden genegeerd.
-- **Bibliotheekmap** — hierheen wordt de epub gekopieerd (`Auteur - Titel.epub`);
-  de torrent blijft in qBittorrent seeden.
+- **Bibliotheekmap** — hierheen wordt de epub gekopieerd (`Auteur - Reeks 01 - Titel (jaar).epub`).
 - **Talen die je leest** (EN/NL) — boeken/releases in andere talen worden weggefilterd.
 
-Wachtwoord en API-key worden versleuteld opgeslagen (machine-gebonden; een
+Wachtwoorden en API-sleutels worden versleuteld opgeslagen (machine-gebonden; een
 gekopieerde database vraagt om opnieuw invoeren).
 
 ### Downloadbronnen
@@ -55,10 +47,6 @@ bruikbare epub geeft:
 4. **Z-Library** — vul je **e-mail + wachtwoord** in van je (gratis) Z-Library
    account. Zonder die twee blijft Z-Library uit. Een gratis account mag ± 10
    downloads per dag; daarna krijg je "downloadlimiet bereikt".
-5. **Torrents (Prowlarr)** — de laatste stap, kan niet uitgezet worden.
-
-*Anna's Archive* heeft alleen een veld voor een member-key (voor later); er wordt
-nog niet mee gezocht.
 
 > LibGen is nog niet tegen de echte site getest — als het zoeken daar niks
 > oplevert terwijl het boek er wel staat, geef dat dan door, dan stem ik de bron af.
@@ -72,9 +60,14 @@ nog niet mee gezocht.
 - **Nu zoeken** op een boek zoekt meteen (alle bronnen op volgorde) en pakt de
   beste epub. **Kies zelf** toont de resultaten van álle bronnen naast elkaar,
   met een label welke bron het is. De **ster** zet automatisch zoeken per boek aan/uit.
-- **Activity** toont lopende downloads en recente gebeurtenissen.
-- **Volgen** — volg een auteur of reeks; nieuwe boeken komen als *suggestie* (niet
-  automatisch gedownload). Groen bolletje = er staan suggesties klaar.
+- **Activity** toont waar nu naar gezocht wordt en recente gebeurtenissen.
+- **Ontdekken** — bestsellerlijsten (Engels VS/VK, Nederlands, Vlaanderen, trending) met
+  beschrijving; voeg handmatig toe wat je wilt lezen. De New York Times-lijsten
+  vragen een gratis API-sleutel (Instellingen → Bibliotheek).
+- **Kindle** — stuur boeken uit je bibliotheek via Send to Kindle (e-mail) naar je
+  Kindle. Stel je Kindle-adres en mailserver in bij Instellingen → Kindle.
+- Het **potlood** op een boek past titel, auteur, jaar, reeks, taal, ISBN en cover aan
+  (ook in het epub-bestand en de bestandsnaam).
 
 ## Op de achtergrond draaien (aanrader)
 
@@ -119,7 +112,3 @@ om te zetten. Epub blijft altijd de eerste keuze.
 
 - EbookArr zoekt standaard **alleen epub**. Releases zonder epub worden overgeslagen
   (tenzij je Kindle-formaten aanzet, zie hierboven).
-- Publieke torrent-indexers vinden Engelstalige boeken veel makkelijker dan
-  Nederlandstalige. Voor NL-boeken heb je indexers nodig die die aanbieden.
-- Lange, exacte titels leveren op sommige indexers niets op; EbookArr probeert
-  daarom automatisch ook kortere varianten van de zoekopdracht.

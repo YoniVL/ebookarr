@@ -1,5 +1,5 @@
 """Gedeelde logica voor de routes én de achtergrond-scheduler:
-zoeken, releases doorsturen naar qBittorrent, downloads volgen en importeren.
+zoeken bij de downloadbronnen, importeren in de bibliotheek, metadata en bestandsbeheer.
 """
 import contextlib
 import logging
@@ -13,14 +13,12 @@ import time
 import xml.etree.ElementTree as ET
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
 
 from . import db, metadata, sources
-from .prowlarr import DEFAULT_BOOK_CATEGORIES, ProwlarrClient
-from .qbittorrent import QBittorrentClient
 
 log = logging.getLogger("ebookarr.services")
 
@@ -40,7 +38,6 @@ def _run_hidden(args, **kw):
 
 # Voorkomt dat een handmatige actie en een scheduler-ronde elkaar overlappen
 _search_lock = threading.Lock()
-_poll_lock = threading.Lock()
 
 _BAD_FILENAME = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
@@ -49,8 +46,6 @@ _BAD_FILENAME = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 MIN_EPUB_BYTES = 15 * 1024
 MAX_EPUB_BYTES = 80 * 1024 * 1024
 
-# Volgorde van voorkeur voor het importeren; epub eerst (geen conversie nodig).
-EBOOK_EXTS_ORDER = (".epub", ".azw3", ".mobi", ".azw")
 
 _CALIBRE_CANDIDATES = (
     r"C:\Program Files\Calibre2\ebook-convert.exe",
@@ -92,39 +87,14 @@ def kindle_enabled():
     return bool_setting("accept_kindle", False) and find_ebook_convert() is not None
 
 
-class ConfigError(RuntimeError):
-    """Prowlarr/qBittorrent is nog niet (volledig) ingesteld."""
-
-
 class DuplicateBook(RuntimeError):
     """Er staat al een boek met deze titel/auteur/ISBN op de lijst."""
 
 
 # ---------- Clients ----------
 
-def get_prowlarr() -> ProwlarrClient:
-    url = db.get_setting("prowlarr_url")
-    key = db.get_setting("prowlarr_api_key")
-    if not url or not key:
-        raise ConfigError("Prowlarr is nog niet geconfigureerd (ga naar Instellingen).")
-    return ProwlarrClient(url, key)
-
-
-def get_qbittorrent() -> QBittorrentClient:
-    url = db.get_setting("qbittorrent_url")
-    user = db.get_setting("qbittorrent_username")
-    pw = db.get_setting("qbittorrent_password")
-    if not url or not user:
-        raise ConfigError("qBittorrent is nog niet geconfigureerd (ga naar Instellingen).")
-    return QBittorrentClient(url, user, pw)
-
 
 # ---------- Instellingen-helpers ----------
-
-def get_categories():
-    raw = db.get_setting("prowlarr_categories") or ""
-    cats = [int(x) for x in re.split(r"[,\s]+", raw) if x.strip().isdigit()]
-    return cats or list(DEFAULT_BOOK_CATEGORIES)
 
 
 def bool_setting(key, default=False):
@@ -143,10 +113,6 @@ def int_setting(key, default):
 
 def _now_iso():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def _tag(book_id):
-    return f"ebookarr-{book_id}"
 
 
 # ---------- Zoek-voortgang (in-memory; getoond in de UI) ----------
@@ -198,37 +164,10 @@ def search_progress():
 
 # ---------- Zoeken ----------
 
-# Woorden die publieke torrent-indexers vaak laten stranden ("0 resultaten")
-_STOPWORDS = {"the", "a", "an", "and", "of", "to", "de", "het", "een", "en", "van"}
-
-
-def _words(text: str):
-    text = re.sub(r"[.'’`]", "", text or "")
-    text = re.sub(r"[^\w\s-]", " ", text)
-    return [w for w in text.split() if w]
-
 
 def _norm(text: str) -> str:
     """Alleen kleine letters + cijfers — voor het losjes vergelijken van titels."""
     return re.sub(r"[^a-z0-9]+", "", (text or "").lower())
-
-
-def _title_words(title: str, n: int):
-    words = _words(title)
-    sig = [w for w in words if w.lower() not in _STOPWORDS] or words
-    return " ".join(sig[:n])
-
-
-# Sterke aanwijzingen dat een release in een bepaalde taal is
-_LANG_MARKERS = {
-    "es": ("mundodisco", "saga de la muerte", "castellano", "español", "espanol",
-           "spanish", "traduccion"),
-    "fr": ("français", "francais", "french", "traduit"),
-    "de": ("deutsch", "german", "übersetzt"),
-    "it": ("italiano", "italian"),
-    "nl": ("nederlands", "dutch", "vertaald"),
-    "en": ("english",),
-}
 
 
 def get_reading_languages():
@@ -254,135 +193,6 @@ def reading_lang(lang):
     return lang if lang in ("en", "nl", "") else "en"
 
 
-def _language_rank(title: str, want_langs):
-    """+1 als de release-titel een taal signaleert die de gebruiker leest,
-    -1 als hij duidelijk een taal signaleert die de gebruiker NIET leest,
-    anders 0. Alleen gebruikt om te sorteren."""
-    want = set(want_langs or [])
-    if not want:
-        return 0
-    low = (title or "").lower()
-    for lang, markers in _LANG_MARKERS.items():
-        if any(m in low for m in markers):
-            return 1 if lang in want else -1
-    return 0
-
-
-def release_check(release: dict, book: dict):
-    """(ok, reden). Simpele sanity-checks tegen verkeerde auto-downloads."""
-    size = release.get("size") or 0
-    if size and size < MIN_EPUB_BYTES:
-        return False, f"verdacht klein ({size // 1024} KB)"
-    if size and size > MAX_EPUB_BYTES:
-        mb = size / (1024 * 1024)
-        return False, f"veel te groot voor een epub ({mb:.0f} MB), vermoedelijk een bundel of audioboek"
-
-    _, surname = _author_bits(book.get("author") or "")
-    if surname and _norm(surname) not in _norm(release.get("title") or ""):
-        return False, f"auteur '{surname}' komt niet voor in de release-titel"
-    return True, ""
-
-
-def _author_bits(author: str):
-    """(volledige auteur zonder initialen, achternaam)."""
-    words = [w for w in _words(author) if len(w) > 1]
-    if not words:
-        return "", ""
-    return " ".join(words), words[-1]
-
-
-def _build_queries(book: dict, epub_only: bool):
-    """Zoekvarianten van (redelijk) specifiek naar breed.
-
-    Publieke torrent-indexers doen strikte AND-matching: hoe meer woorden,
-    hoe groter de kans op 0 resultaten omdat torrent-namen zelden de volledige
-    ondertitel bevatten. Daarom korte queries met de kernwoorden.
-
-    Als er een auteur bekend is, zit die in ELKE variant — we vallen nooit
-    terug op alleen de titel (anders krijg je bij korte titels als "Mort"
-    volledig verkeerde boeken).
-    """
-    title = (book.get("title") or "").strip()
-    author_full, surname = _author_bits(book.get("author") or "")
-    suffix = " epub" if epub_only else ""
-    t4, t3, t2 = _title_words(title, 4), _title_words(title, 3), _title_words(title, 2)
-
-    raw = []
-    if surname:
-        raw = [
-            f"{t3} {surname}{suffix}",
-            f"{t3} {surname}",           # geen 'epub' in query -> is_epub-filter
-            f"{t2} {surname}{suffix}",
-        ]
-        if author_full != surname:
-            raw.append(f"{t4} {author_full}{suffix}")
-    else:
-        raw = [f"{t4}{suffix}", f"{t3}{suffix}", t4]
-
-    seen, out = set(), []
-    for variant in raw:
-        q = " ".join(variant.split())
-        if q and q not in seen:
-            seen.add(q)
-            out.append(q)
-    # nooit meer dan 3 zoekopdrachten per boek (elke duurt ~30-60s)
-    return out[:3]
-
-
-def search_book(book: dict, epub_only: bool = True):
-    client = get_prowlarr()
-    cats = get_categories()
-    # Voorkeurstaal: Engels als het boek oorspronkelijk Engelstalig is, anders
-    # Nederlands (zie preferred_language). Handmatige keuze wint.
-    want_langs = [preferred_language(book)]
-    results = []
-    last_error = None
-    for query in _build_queries(book, epub_only):
-        # Bevat de query al "epub"? Dan doet dat woord + de is_epub-filter het
-        # narrow-werk, en zijn categorieën alleen maar hinderlijk (publieke
-        # indexers categoriseren ebooks vaak niet). Zonder "epub" in de query
-        # helpen de boekcategorieën juist tegen ruis (films e.d.).
-        use_cats = None if "epub" in query.lower() else cats
-        try:
-            found = client.search(query, categories=use_cats)
-        except requests.RequestException as e:
-            # Eén trage/haperende indexer mag de hele zoekopdracht niet slopen;
-            # probeer de volgende variant.
-            log.warning("Boek %s: query %r mislukt (%s), volgende variant",
-                        book.get("id"), query, e)
-            last_error = e
-            continue
-        if epub_only:
-            kindle_ok = kindle_enabled()
-            found = [
-                r for r in found
-                if r.get("is_epub") or (kindle_ok and r.get("is_kindle"))
-            ]
-        for r in found:
-            ok, reason = release_check(r, book)
-            r["sane"] = ok
-            r["sane_reason"] = reason
-        if found:
-            # epub eerst (geen conversie nodig), dan sane, dan taal, dan seeders
-            found.sort(
-                key=lambda r: (r.get("is_epub", False),
-                               r.get("sane", True),
-                               _language_rank(r.get("title"), want_langs),
-                               r.get("seeders") or 0),
-                reverse=True,
-            )
-            log.info("Boek %s: %d ebook-resultaten voor query %r",
-                     book.get("id"), len(found), query)
-            return found
-        results = found
-    if not results and last_error is not None:
-        raise RuntimeError(
-            f"Prowlarr reageerde niet op tijd ({last_error}). Vaak is één indexer "
-            "traag/offline — probeer het zo nog eens."
-        )
-    return results
-
-
 # ---------- Bronnen: zoeken over alle bronnen + pakken ----------
 
 def _accepted_format(fmt):
@@ -397,14 +207,7 @@ def _candidate_ok(book, cand, pref, reading):
     size = cand.get("size") or 0
     if size and (size < MIN_EPUB_BYTES or size > MAX_EPUB_BYTES):
         return False
-    if cand["kind"] == "torrent":
-        if not cand.get("sane", True):
-            return False
-        if (cand.get("seeders") or 0) < int_setting("min_seeders", 1):
-            return False
-        guid = (cand.get("download") or {}).get("guid")
-        return not (guid and db.already_grabbed(book["id"], guid))
-    # directe bron: taalcheck (onbekende taal blijft toegestaan)
+    # taalcheck (onbekende taal blijft toegestaan)
     lang = cand.get("language")
     return not (lang and lang != pref and lang not in reading)
 
@@ -433,7 +236,6 @@ def _rank_candidates(cands, pref, book=None):
             cand.get("language") == pref,
             exact_title,
             _sane_size_score(cand.get("size")),
-            (cand.get("seeders") or 0) if cand["kind"] == "torrent" else 0,
             min(cand.get("size") or 0, 4 * 1024 * 1024),  # binnen 'sane' groter = vollediger
         )
     return sorted(cands, key=key, reverse=True)
@@ -441,17 +243,12 @@ def _rank_candidates(cands, pref, book=None):
 
 def find_from_sources(book: dict):
     """Doorloop de ingeschakelde bronnen op volgorde; geef (bronnaam, bruikbare
-    kandidaten, opmerking) van de eerste bron met resultaten (torrents laatst).
-
-    Als een directe bron (geen torrent) een fout gaf én de enige treffers van
-    torrents zouden komen, pakken we niets: `opmerking` legt uit waarom, en het
-    boek blijft 'wanted' zodat de volgende zoekronde het opnieuw probeert."""
+    kandidaten, opmerking) van de eerste bron met resultaten."""
     pref = preferred_language(book)
     reading = get_reading_languages()
     trigger = (_search_progress.get(book["id"]) or {}).get("trigger", "zoeken")
     mods = sources.enabled_in_order()
-    direct = [m for m in mods if not getattr(m, "IS_TORRENT", False)]
-    torrents = [m for m in mods if getattr(m, "IS_TORRENT", False)]
+    direct = mods
 
     def _usable(mod):
         cands = mod.search(book) or []
@@ -470,8 +267,6 @@ def find_from_sources(book: dict):
                 mod = futs[fut]
                 try:
                     usable = fut.result()
-                except ConfigError:
-                    raise
                 except Exception as e:  # noqa: BLE001
                     log.warning("Bron %s: zoeken mislukt: %s", mod.NAME, e)
                     direct_errors.append(sources.label(mod.NAME))
@@ -492,27 +287,6 @@ def find_from_sources(book: dict):
                  book["id"], len(hits[mod.NAME]), mod.NAME)
         return mod.NAME, hits[mod.NAME], None
 
-    # --- geen directe treffer: torrents (laatste redmiddel) ---
-    for mod in torrents:
-        _progress_set(book["id"], f"zoekt bij {sources.label(mod.NAME)}", trigger)
-        try:
-            usable = _usable(mod)
-        except ConfigError:
-            raise
-        except Exception as e:  # noqa: BLE001
-            log.warning("Bron %s: zoeken mislukt: %s", mod.NAME, e)
-            continue
-        if not usable:
-            continue
-        if direct_errors:
-            note = (f"{', '.join(direct_errors)} gaf een fout; alleen torrents "
-                    "gevonden - die pak ik niet automatisch. Nieuwe poging bij "
-                    "de volgende zoekronde, of gebruik 'Kies zelf'.")
-            log.warning("Boek %s: torrents overgeslagen (%s)", book["id"], note)
-            return None, [], note
-        log.info("Boek %s: %d bruikbaar via bron '%s'",
-                 book["id"], len(usable), mod.NAME)
-        return mod.NAME, usable, None
     return None, [], None
 
 
@@ -554,20 +328,12 @@ def find_all_candidates(book: dict, epub_only: bool = True):
     out.sort(key=lambda c: (
         not c.get("usable", False),
         priority.get(c["source"], 99),
-        -(c.get("seeders") or 0),
     ))
     return out
 
 
 def grab_candidate(book: dict, cand: dict):
-    """Pak één kandidaat: torrent -> qBittorrent; directe bron -> download + import."""
-    if cand["kind"] == "torrent":
-        grab_release(book, cand["download"])
-        with db.get_conn() as conn:
-            conn.execute("UPDATE books SET source=? WHERE id=?",
-                         (cand["source"], book["id"]))
-            conn.commit()
-        return
+    """Pak één kandidaat: download via de bron en importeer in de bibliotheek."""
     _download_direct(book, cand)
 
 
@@ -636,63 +402,6 @@ def _set_last_checked(book_id):
 
 # ---------- Release doorsturen ----------
 
-def grab_release(book: dict, release: dict):
-    guid = release.get("guid")
-    if guid and db.already_grabbed(book["id"], guid):
-        raise RuntimeError("Deze release is al eerder gepakt.")
-    if not release.get("download_url"):
-        raise RuntimeError("Deze release heeft geen bruikbare download-link.")
-
-    qbt = get_qbittorrent()
-    tag = _tag(book["id"])
-    try:
-        before = {t.get("hash") for t in qbt.torrents_info()}
-    except Exception:
-        before = set()
-    qbt.add_torrent(release["download_url"], tag=tag)
-    torrent_hash = _resolve_hash(qbt, tag, before)
-
-    with db.get_conn() as conn:
-        conn.execute(
-            """UPDATE books SET status='downloading', grabbed_release=?, grabbed_guid=?,
-                   grabbed_at=CURRENT_TIMESTAMP, download_hash=?, progress=0,
-                   dl_state='queued', last_error=NULL
-               WHERE id=?""",
-            (release.get("title"), guid, torrent_hash, book["id"]),
-        )
-        conn.commit()
-    db.add_history(
-        book["id"], "grabbed", release.get("title"), guid,
-        f"indexer={release.get('indexer')} seeders={release.get('seeders')}",
-    )
-    log.info("Boek %s: release gepakt %r (hash=%s)", book["id"], release.get("title"), torrent_hash)
-    return torrent_hash
-
-
-def _resolve_hash(qbt: QBittorrentClient, tag: str, before: set | None = None):
-    """qBittorrent geeft bij 'add' geen hash terug. We zoeken de torrent die er
-    NA de add bij is gekomen (diff met `before`); pas als dat niks oplevert
-    vallen we terug op de nieuwste met onze tag (kan mis gaan als er nog een
-    oude torrent met dezelfde tag in qBittorrent staat)."""
-    before = before or set()
-    for _ in range(16):
-        try:
-            all_infos = qbt.torrents_info()
-        except Exception:
-            all_infos = []
-        new_hashes = [t for t in all_infos if t.get("hash") not in before]
-        if new_hashes:
-            new_hashes.sort(key=lambda t: t.get("added_on", 0), reverse=True)
-            return new_hashes[0].get("hash")
-        time.sleep(0.5)
-
-    try:
-        tagged = qbt.torrents_info(tag=tag)
-        tagged.sort(key=lambda t: t.get("added_on", 0), reverse=True)
-        return tagged[0].get("hash") if tagged else None
-    except Exception:
-        return None
-
 
 # ---------- Auto-zoekronde ----------
 
@@ -728,8 +437,6 @@ def auto_search_all(trigger="handmatig"):
                         summary["grabbed"] += 1
                     elif not usable:
                         _set_error(book["id"], note)
-            except ConfigError:
-                raise
             except Exception as e:  # noqa: BLE001
                 summary["errors"] += 1
                 log.warning("Zoeken voor boek %s mislukt: %s", book["id"], e)
@@ -749,96 +456,6 @@ def _set_error(book_id, message):
 
 
 # ---------- Downloads volgen + importeren ----------
-
-_DONE_STATES = {"uploading", "stalledUP", "forcedUP", "pausedUP", "queuedUP", "checkingUP"}
-
-
-def poll_downloads(trigger="scheduler"):
-    if not _poll_lock.acquire(blocking=False):
-        return
-    try:
-        with db.get_conn() as conn:
-            books = [dict(r) for r in conn.execute(
-                "SELECT * FROM books WHERE status='downloading'"
-            )]
-        if not books:
-            return
-
-        qbt = get_qbittorrent()
-        stalled_hours = int_setting("stalled_hours", 24)
-
-        for book in books:
-            try:
-                torrent_hash = book.get("download_hash")
-                if not torrent_hash:
-                    # Hash ontbrak bij het grabben (qBittorrent was traag):
-                    # alsnog ophalen via onze tag.
-                    tagged = qbt.torrents_info(tag=_tag(book["id"]))
-                    tagged.sort(key=lambda x: x.get("added_on", 0), reverse=True)
-                    torrent_hash = tagged[0].get("hash") if tagged else None
-                    if not torrent_hash:
-                        continue
-                    with db.get_conn() as conn:
-                        conn.execute(
-                            "UPDATE books SET download_hash=? WHERE id=?",
-                            (torrent_hash, book["id"]),
-                        )
-                        conn.commit()
-                    book["download_hash"] = torrent_hash
-                infos = qbt.torrents_info(hashes=torrent_hash)
-                if not infos:
-                    continue
-                t = infos[0]
-                progress = float(t.get("progress") or 0.0)
-                state = t.get("state") or ""
-                with db.get_conn() as conn:
-                    conn.execute(
-                        "UPDATE books SET progress=?, dl_state=? WHERE id=?",
-                        (progress, state, book["id"]),
-                    )
-                    conn.commit()
-
-                if progress >= 0.999 or state in _DONE_STATES:
-                    _import_book(book, t, qbt)
-                elif _is_stalled(book, t, stalled_hours):
-                    _mark_failed(book)
-            except ConfigError:
-                raise
-            except Exception as e:
-                log.warning("Download volgen voor boek %s mislukt: %s", book["id"], e)
-    finally:
-        _poll_lock.release()
-
-
-def _is_stalled(book, t, stalled_hours):
-    if any((t.get(k) or 0) > 0 for k in ("num_seeds", "num_complete", "progress")):
-        return False
-    grabbed_at = book.get("grabbed_at")
-    if not grabbed_at:
-        return False
-    try:
-        dt = datetime.fromisoformat(str(grabbed_at).replace("Z", ""))
-    except ValueError:
-        return False
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - dt > timedelta(hours=stalled_hours)
-
-
-def _mark_failed(book):
-    db.add_history(
-        book["id"], "failed", book.get("grabbed_release"), book.get("grabbed_guid"),
-        "download vastgelopen (0 seeders)",
-    )
-    with db.get_conn() as conn:
-        conn.execute(
-            "UPDATE books SET status='failed', dl_state='stalled', last_error=? WHERE id=?",
-            ("Vorige download liep vast (0 seeders); volgende zoekronde "
-             "probeert een andere release.",
-             book["id"]),
-        )
-        conn.commit()
-    log.info("Boek %s: download vastgelopen, gemarkeerd als failed", book["id"])
 
 
 def _sanitize(s):
@@ -867,35 +484,6 @@ def _filename_for(book, suffix=".epub"):
     prefix = f"{head} - " if head else ""
     room = max(180 - len(prefix) - len(year_part), 20)   # de titel krimpt, het jaar blijft
     return prefix + title[:room].rstrip() + year_part + (suffix or ".epub")
-
-
-def _resolve_file_path(t, rel_name):
-    save_path = t.get("save_path") or ""
-    cand = Path(save_path) / rel_name
-    if cand.exists():
-        return cand
-    content_path = Path(t.get("content_path") or "")
-    if content_path.is_file():
-        return content_path
-    if content_path.is_dir():
-        alt = content_path / Path(rel_name).name
-        if alt.exists():
-            return alt
-    return cand
-
-
-def _pick_ebook_file(files):
-    """Kies het beste ebook-bestand uit een torrent (epub > azw3 > mobi > azw,
-    daarbinnen het grootste)."""
-    best = None
-    for f in files:
-        ext = Path(str(f.get("name", ""))).suffix.lower()
-        if ext not in EBOOK_EXTS_ORDER:
-            continue
-        rank = (EBOOK_EXTS_ORDER.index(ext), -(f.get("size") or 0))
-        if best is None or rank < best[0]:
-            best = (rank, f, ext)
-    return (best[1], best[2]) if best else (None, None)
 
 
 def _convert_to_epub(src: Path, dest: Path):
@@ -998,21 +586,6 @@ def _embed_metadata(book, epub_path: Path):
     finally:
         if cover_tmp:
             cover_tmp.unlink(missing_ok=True)
-
-
-def _import_book(book, t, qbt):
-    files = qbt.torrent_files(book["download_hash"])
-    chosen, ext = _pick_ebook_file(files)
-    if not chosen:
-        _finish_import(book, None, "Download klaar, maar geen ebook-bestand in de torrent gevonden.")
-        db.add_history(book["id"], "import", detail="geen ebook in torrent")
-        return
-
-    src = _resolve_file_path(t, chosen["name"])
-    dest, error = _place_in_library(book, src, ext)
-    _finish_import(book, str(dest) if dest else None, error)
-    db.add_history(book["id"], "import", book.get("grabbed_release"),
-                   detail=(error or f"geïmporteerd -> {dest}"))
 
 
 def _finish_import(book, library_path, error):
@@ -1630,15 +1203,8 @@ def update_book_metadata(book_id: int, fields: dict):
 # ---------- Activity ----------
 
 def activity():
-    """Overzicht voor de Activity-tab: lopende downloads met live-gegevens
-    uit qBittorrent, plus recente gebeurtenissen."""
+    """Overzicht voor de Activity-tab: recente gebeurtenissen en lopende zoekacties."""
     with db.get_conn() as conn:
-        books = [dict(r) for r in conn.execute(
-            "SELECT id, title, author, status, grabbed_release, grabbed_at, "
-            "download_hash, progress, dl_state, last_error "
-            "FROM books WHERE status IN ('downloading', 'failed') "
-            "ORDER BY grabbed_at DESC"
-        )]
         recent = [dict(r) for r in conn.execute(
             "SELECT h.created_at, h.event, h.release_title, h.detail, "
             "b.title AS book_title "
@@ -1646,37 +1212,7 @@ def activity():
             "WHERE h.event IN ('grabbed', 'import', 'failed') "
             "ORDER BY h.created_at DESC LIMIT 25"
         )]
-
-    by_hash = {}
-    try:
-        qbt = get_qbittorrent()
-        for t in qbt.torrents_info(tag=None):
-            by_hash[t.get("hash")] = t
-    except Exception as e:
-        log.debug("activity: kon qBittorrent niet bevragen: %s", e)
-
-    downloads = []
-    for b in books:
-        t = by_hash.get(b.get("download_hash"), {})
-        eta = t.get("eta")
-        if eta in (None, 8640000) or (eta or 0) > 8639999:
-            eta = None
-        downloads.append({
-            "book_id": b["id"],
-            "title": b["title"],
-            "author": b["author"],
-            "status": b["status"],
-            "release": b.get("grabbed_release"),
-            "progress": t.get("progress", b.get("progress") or 0),
-            "state": t.get("state") or b.get("dl_state"),
-            "dlspeed": t.get("dlspeed"),
-            "eta": eta,
-            "num_seeds": t.get("num_seeds"),
-            "num_leechs": t.get("num_leechs"),
-            "size": t.get("size"),
-            "last_error": b.get("last_error"),
-        })
-    return {"downloads": downloads, "recent": recent, "searching": search_progress()}
+    return {"recent": recent, "searching": search_progress()}
 
 
 # ---------- Verwijderen ----------

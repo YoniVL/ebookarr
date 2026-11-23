@@ -203,8 +203,6 @@ code{font-family:var(--f-mono);font-size:.88em;background:var(--surface-2);paddi
 .linkbtn:hover{color:var(--accent-hover)}
 .ib-flat{background:transparent;box-shadow:none}
 .ib-flat:hover{background:var(--surface-2);color:var(--ink)}
-.ib-sm{width:32px;height:32px}
-.ib-sm .i{width:16px;height:16px}
 
 /* ---------- meldingen ---------- */
 .note{display:flex;align-items:center;gap:12px;padding:12px 16px 12px 18px;border-radius:var(--r-m);margin:0 0 16px;font:var(--fw-semibold) var(--fs-sm)/1.4 var(--f-display);animation:fade .18s ease}
@@ -386,27 +384,7 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
 .rec.k-other .rico{background:var(--surface-2);color:var(--ink-2)}
 
 /* ---------- volgen ---------- */
-.followform{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
-.followform .field{width:auto;flex:1;min-width:180px}
-.followform select.field{flex:none;min-width:130px}
-.fchip{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 6px 0 16px;border-radius:var(--r-pill);background:var(--surface);box-shadow:var(--shadow-1);font-weight:var(--fw-semibold);color:var(--ink)}
-.fchip .i{color:var(--ink-3)}
-.fchip small{font-weight:var(--fw-regular);color:var(--ink-3);font-size:13px}
-.fchip .ib{width:32px;height:32px;box-shadow:none;background:transparent}
-.fchip .ib:hover{background:var(--fail-fg);color:var(--on-hi)}
-.sugtools{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:20px}
-.sugtools .crow{font-size:14px;color:var(--ink-2)}
 .group{background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow-1);margin-bottom:20px;overflow:hidden}
-.ghead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 20px}
-.gtoggle{display:flex;align-items:center;gap:12px;background:none;border:0;color:var(--ink);font:var(--fw-black) 20px/1.1 var(--f-display);letter-spacing:-.02em;cursor:pointer;padding:6px 8px 6px 0;border-radius:var(--r-s);text-align:left}
-.gtoggle small{font:var(--fw-semibold) 14px var(--f-display);color:var(--ink-3);letter-spacing:0}
-.gactions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
-.gbody{padding:4px 20px 24px}
-.sugrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:24px 20px}
-.sugrid .card .cov{box-shadow:var(--shadow-1)}
-.sugrid .ctitle{font-size:15px}
-.sugrid .sbtns{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:24px;color:var(--ink-2);font-size:14px}
 
 /* ---------- instellingen ---------- */
 .subnav{position:sticky;top:12px;z-index:20;display:flex;flex-wrap:wrap;gap:2px;padding:4px;background:var(--surface);border-radius:var(--r-pill);box-shadow:var(--shadow-2);width:max-content;max-width:100%;margin:0 0 28px}
@@ -430,7 +408,6 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
 .srow .sn small{display:block;font-weight:var(--fw-regular);font-size:13px;color:var(--ink-3);margin-top:2px}
 .src .sub{margin:14px 0 0 34px}
 .src .sub .field{background:var(--surface)}
-.sticky-gap{height:1px}
 
 @media (max-width:760px){
   .topbar{padding:16px}
@@ -968,17 +945,6 @@ function formatSize(bytes) {
   const mb = kb / 1024;
   if (mb < 1024) return nl(mb) + ' MB';
   return nl(mb / 1024) + ' GB';
-}
-function formatSpeed(bps) {
-  if (!bps) return '0 KB/s';
-  if (bps >= 1024 * 1024) return (bps / (1024 * 1024)).toFixed(1) + ' MB/s';
-  return Math.round(bps / 1024) + ' KB/s';
-}
-function formatEta(sec) {
-  if (sec == null) return '—';
-  if (sec < 60) return sec + 's';
-  if (sec < 3600) return Math.round(sec / 60) + 'm';
-  return Math.round(sec / 3600) + 'u';
 }
 function timeAgo(iso) {
   if (!iso) return '';
@@ -2025,9 +1991,7 @@ async function doSearch(id) {
       const fmt = r.format === 'epub'
         ? '<span class="tag">EPUB</span>'
         : `<span class="tag tag--conv">${escapeHtml((r.format || '').toUpperCase())}${icon('convert')}EPUB</span>`;
-      const extra = r.kind === 'torrent'
-        ? `${escapeHtml((r.download && r.download.indexer) || '')} · ${r.seeders ?? '?'} seeders`
-        : escapeHtml(r.detail || '');
+      const extra = escapeHtml(r.detail || '');
       return `<div class="rel${bad ? ' dim' : ''}"><div class="rb">
           <div class="rt">${escapeHtml(r.title)}</div>
           <div class="tags">${fmt}<span class="tag tag--${SRC_CLASS[r.source] || 'outline'}">${escapeHtml(SRC_LABELS[r.source] || r.source)}</span></div>
@@ -2054,7 +2018,7 @@ async function grabCandidate(i) {
     return;
   }
   closeModal('pick-overlay');
-  wantedMsg('ok', cand.kind === 'torrent' ? 'Naar qBittorrent gestuurd.' : 'Gedownload en toegevoegd aan je bibliotheek.');
+  wantedMsg('ok', 'Gedownload en toegevoegd aan je bibliotheek.');
   loadBooks();
 }
 

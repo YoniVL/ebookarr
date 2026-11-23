@@ -544,8 +544,6 @@ def grab_best(book_id: int):
     book = _get_book_or_404(book_id)
     try:
         return services.grab_best(book)
-    except services.ConfigError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -567,8 +565,6 @@ def book_search(book_id: int, all_formats: bool = Query(False, alias="all")):
     book = _get_book_or_404(book_id)
     try:
         results = services.find_all_candidates(book, epub_only=not all_formats)
-    except services.ConfigError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Zoeken mislukt: {e}") from e
 
@@ -587,8 +583,6 @@ def grab_candidate(book_id: int, cand: dict):
         raise HTTPException(status_code=400, detail="Ongeldige kandidaat.")
     try:
         services.grab_candidate(book, cand)
-    except services.ConfigError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Downloaden mislukt: {e}") from e
     return {"ok": True}
@@ -596,10 +590,7 @@ def grab_candidate(book_id: int, cand: dict):
 
 @app.post("/api/search-all")
 def search_all():
-    try:
-        return services.auto_search_all(trigger="handmatig (alles)")
-    except services.ConfigError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    return services.auto_search_all(trigger="handmatig (alles)")
 
 
 # ---------- Helpers ----------

@@ -19,8 +19,6 @@ _scheduler: BackgroundScheduler | None = None
 def _search_job():
     try:
         services.auto_search_all(trigger="scheduler")
-    except services.ConfigError as e:
-        log.info("Zoekronde overgeslagen: %s", e)
     except Exception:
         log.exception("Onverwachte fout in zoekronde")
 

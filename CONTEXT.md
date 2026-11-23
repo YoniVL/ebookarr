@@ -1,12 +1,14 @@
 # EbookArr — projectcontext voor Claude Code
 
 ## Wat dit is
+> **Let op (2026-11-23):** secties hieronder over torrents/Prowlarr/qBittorrent, het tabblad *Volgen* (auteurs/reeksen/suggesties) en Anna's Archive zijn historisch: die onderdelen zijn uit de app verwijderd. Zie de changelog onderaan.
+
 Een zelfgebouwde "Sonarr/Radarr voor ebooks": gebruiker zet boeken op een
 wanted-lijst, de app zoekt via **meerdere downloadbronnen op volgorde**
-(Gutenberg → Standard Ebooks → LibGen → Z-Library → torrents via Prowlarr),
+(Gutenberg → Standard Ebooks → LibGen → Z-Library),
 pakt de eerste bruikbare epub, en kopieert die hernoemd naar een bibliotheekmap.
-Directe bronnen downloaden het bestand via HTTP; alleen torrents gaan via
-**qBittorrent**. Niet-epub (mobi/azw3) wordt bij import via Calibre omgezet.
+Alle bronnen downloaden het bestand via HTTP (torrents/Prowlarr/qBittorrent zijn
+in 2026-11 uit de app gehaald). Niet-epub (mobi/azw3) wordt bij import via Calibre omgezet.
 
 Draait lokaal op **Windows, zonder Docker**. De gebruiker kan zelf niet
 coderen — alle wijzigingen door Claude Code. De app moet blijven werken via
@@ -64,17 +66,16 @@ ebookarr/
     main.py          FastAPI routes + lifespan (start/stopt scheduler)
     db.py             SQLite + mini-migratiesysteem (PRAGMA user_version) + secret-helpers
     obfuscate.py      Machine-gebonden lichte versleuteling voor wachtwoord/API-key
-    prowlarr.py       ProwlarrClient — /api/v1/search, categorie-param, is_epub-detectie
     sources/          Downloadbronnen-pakket (zie "Downloadbronnen" hieronder):
                       _common.py, gutenberg.py, standardebooks.py, libgen.py,
-                      zlibrary.py, prowlarr_src.py, __init__.py (REGISTRY + volgorde)
+                      zlibrary.py, __init__.py (REGISTRY + volgorde)
     opds.py           OPDS 1.2-catalogus voor leesapps (zie "OPDS-catalogus")
-    qbittorrent.py    QBittorrentClient — login (Referer/Origin + verificatie), add met tag,
-                      torrents/info, torrents/files
+    charts.py         Bestsellerlijsten voor het tabblad Ontdekken (Amazon Charts, NYT, The Bookseller,
+                      Apple Books, Bestseller 60, Standaard Boekhandel, Open Library)
+    kindle.py         Send to Kindle via SMTP (epub wordt eerst opgeschoond)
     metadata.py       Boek opzoeken via Google Books + Open Library (samengevoegd/ontdubbeld)
-    services.py       Gedeelde logica: zoekvarianten, grab, auto_search_all, poll_downloads, import, health
-    scheduler.py      APScheduler BackgroundScheduler: zoeken (interval), poll (1min),
-                      follows-check + db-backup (1/dag)
+    services.py       Gedeelde logica: zoekvarianten, grab, auto_search_all, import, metadata/cover bewerken, health
+    scheduler.py      APScheduler BackgroundScheduler: zoeken (interval) + db-backup (1/dag)
     tray.py           Achtergrond-app: uvicorn in thread + pystray systray-icoon
                       (Open EbookArr / Afsluiten). `pythonw -m app.tray` = geen venster.
     logsetup.py       RotatingFileHandler -> ebookarr.log + console
@@ -482,4 +483,6 @@ Tabblad Ontdekken (app/charts.py): bestsellerlijsten per regio — Engels VS (Am
 
 Ontdekken uitgebreid: VK = Official UK charts via The Bookseller (Nielsen BookScan; alleen top 5 gratis, rest achter abonnement) naast Apple Books; Vlaanderen = Standaard Boekhandel top 10 (fictie/non-fictie/e-books). Niet bereikbaar (bot-blokkade/abonnement): Waterstones, Foyles, Blackwells, Hive, WHSmith, Sunday Times, Bol.com, Bruna.
 
-Torrents (Prowlarr/qBittorrent) en Anna's-Archive-veld verwijderd uit de app: bron niet meer in REGISTRY, geen poll-job, geen health-chips, geen instellingen/Activity-downloads/filterchip. De modules prowlarr.py, qbittorrent.py en sources/prowlarr_src.py staan nog als ongebruikte code.
+Torrents (Prowlarr/qBittorrent) en Anna's-Archive-veld verwijderd uit de app: bron niet meer in REGISTRY, geen poll-job, geen health-chips, geen instellingen/Activity-downloads/filterchip. De modules prowlarr.py, qbittorrent.py en sources/prowlarr_src.py zijn daarna verwijderd, evenals alle torrent-code in services.py (grab_release, poll_downloads, import via qBittorrent, search_book met Prowlarr-queries).
+
+Opruimronde 2026-11-23 (v2026.11.23-74): prowlarr.py, qbittorrent.py, sources/prowlarr_src.py en alle torrent-code in services.py verwijderd; ongebruikte helpers/constanten (by_series, _ol_by_series, _BOXSET_RE, _language_rank, release_check, ConfigError, already_grabbed, ...), dode CSS (volgen/suggesties), ongebruikte JS en verouderde instellingen-defaults opgeruimd. app/ ging van ~6230 naar ~5330 regels. README en CONTEXT bijgewerkt.

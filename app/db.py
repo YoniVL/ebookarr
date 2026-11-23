@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 import sqlite3
 from contextlib import closing, contextmanager, suppress
 from datetime import datetime
@@ -14,23 +13,19 @@ DB_PATH = Path(__file__).resolve().parent.parent / "ebookarr.db"
 BACKUP_DIR = DB_PATH.parent / "backups"
 
 # Instellingen die versleuteld opgeslagen worden (zie obfuscate.py)
-SECRET_KEYS = {"qbittorrent_password", "prowlarr_api_key",
-               "zlib_password", "zlib_email", "annas_key", "zlib_session",
+SECRET_KEYS = {"zlib_password", "zlib_email", "zlib_session",
                "opds_password", "google_books_key", "smtp_password", "nyt_api_key"}
 
 # Standaardwaarden voor nieuwe instellingen
 SETTING_DEFAULTS = {
     "search_interval_hours": "6",
     "auto_download": "1",
-    "min_seeders": "1",
-    "prowlarr_categories": "7000,7020",
     "library_folder": "",
     "reading_languages": "en,nl",
-    "stalled_hours": "24",
     "accept_kindle": "0",       # ook mobi/azw3 accepteren en naar epub converteren
     "calibre_path": "",         # pad naar ebook-convert.exe (leeg = automatisch zoeken)
     "embed_metadata": "1",      # titel/auteur/taal/cover in het epub schrijven (Calibre)
-    # Downloadbronnen (vaste volgorde; torrents/Prowlarr altijd als laatste)
+    # Downloadbronnen (vaste volgorde)
     "nyt_api_key": "",          # secret; gratis sleutel van developer.nytimes.com
     "kindle_email": "",         # bv. naam_123@kindle.com
     "smtp_host": "",
@@ -46,7 +41,6 @@ SETTING_DEFAULTS = {
     "zlib_domain": "",          # bv. z-lib.io (leeg = standaardlijst proberen)
     "zlib_email": "",           # secret
     "zlib_password": "",        # secret
-    "annas_key": "",            # secret; leeg = Anna's Archive uit
     "google_books_key": "",     # secret; optionele Google Books API-sleutel (geen 429's meer)
     "zlib_session": "",         # secret; gecachete Z-Library-login (domein + cookies)
     "opds_user": "ebookarr",    # login voor de OPDS-catalogus
@@ -195,7 +189,7 @@ def _m007_pref_language(conn):
 
 
 def _m008_book_source(conn):
-    # Via welke bron (gutenberg/libgen/zlibrary/prowlarr/...) is dit boek gepakt
+    # Via welke bron (gutenberg/standardebooks/libgen/zlibrary) is dit boek gepakt
     _add_column(conn, "books", "source TEXT")
 
 
@@ -359,18 +353,6 @@ def add_history(book_id, event, release_title=None, guid=None, detail=None):
             (book_id, event, release_title, guid, detail),
         )
         conn.commit()
-
-
-def already_grabbed(book_id, guid) -> bool:
-    if not guid:
-        return False
-    with get_conn() as conn:
-        row = conn.execute(
-            "SELECT 1 FROM history WHERE book_id = ? AND guid = ? AND event = 'grabbed'",
-            (book_id, guid),
-        ).fetchone()
-    return row is not None
-
 
 
 def mark_kindle_sent(book_id):

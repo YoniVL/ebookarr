@@ -25,10 +25,6 @@ def label(name):
     return m.LABEL if m else name
 
 
-def is_torrent(name):
-    return getattr(_BY_NAME.get(name), "IS_TORRENT", False)
-
-
 def enabled_in_order():
     out = []
     for m in REGISTRY:
