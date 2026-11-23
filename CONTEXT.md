@@ -476,3 +476,6 @@ Eigen cover: POST/DELETE /api/books/{id}/cover (data-URL of link; opgeslagen in 
 Kindle-verzending: epub wordt vlak voor het mailen in een tijdelijke kopie opgeschoond (mapitems en verdachte bestanden zoals oceanofpdf.com eruit; Gmail blokkeert zip-bestanden met .com/.exe/.js), korte pauze tussen mails, nette foutmeldingen, bevestiging bij >25 boeken.
 
 Kindle: hoofdstukbestanden zonder .html-extensie (bv. .html_split_000, geeft Amazon-fout E016 = vaste lay-out) worden bij het versturen in de tijdelijke kopie hernoemd naar .xhtml (verwijzingen in opf/ncx/html mee aangepast).
+
+## Ontdekken (2026.11.23-71)
+Tabblad Ontdekken (app/charts.py): bestsellerlijsten per regio — Engels VS (Amazon Charts meest verkocht/gelezen fictie+non-fictie; NYT via gratis API-sleutel nyt_api_key), Engels VK (Apple Books top/fictie/non-fictie), Nederlands (Bestseller 60 CPNB: fictie/non-fictie/spanning/totaal), Trending (Open Library). Endpoints: GET /api/charts, GET /api/charts/{id}, POST /api/charts/describe (beschrijving/ISBN lui per boek), POST /api/settings/test-nyt. Lijsten 6u gecachet (kv_cache) met oude kopie als de bron faalt. Alleen handmatig toevoegen.

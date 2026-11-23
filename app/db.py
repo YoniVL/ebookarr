@@ -16,7 +16,7 @@ BACKUP_DIR = DB_PATH.parent / "backups"
 # Instellingen die versleuteld opgeslagen worden (zie obfuscate.py)
 SECRET_KEYS = {"qbittorrent_password", "prowlarr_api_key",
                "zlib_password", "zlib_email", "annas_key", "zlib_session",
-               "opds_password", "google_books_key", "smtp_password"}
+               "opds_password", "google_books_key", "smtp_password", "nyt_api_key"}
 
 # Standaardwaarden voor nieuwe instellingen
 SETTING_DEFAULTS = {
@@ -31,6 +31,7 @@ SETTING_DEFAULTS = {
     "calibre_path": "",         # pad naar ebook-convert.exe (leeg = automatisch zoeken)
     "embed_metadata": "1",      # titel/auteur/taal/cover in het epub schrijven (Calibre)
     # Downloadbronnen (vaste volgorde; torrents/Prowlarr altijd als laatste)
+    "nyt_api_key": "",          # secret; gratis sleutel van developer.nytimes.com
     "kindle_email": "",         # bv. naam_123@kindle.com
     "smtp_host": "",
     "smtp_port": "587",

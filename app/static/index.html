@@ -451,6 +451,13 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
 .ce-body{flex:1;min-width:0}
 @media (max-width:520px){.coveredit{flex-direction:column}}
 
+/* ontdekken */
+.disc-meta{margin:16px 0 24px;font-size:13px;color:var(--ink-3)}
+.disc-meta a,.disc-meta .linkbtn{color:var(--accent-text)}
+.cdesc{font-size:13px;line-height:1.45;color:var(--ink-2)}
+.cdesc .dtext.clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ink-3{color:var(--ink-3)}
+
 </style>
 </head>
 <body>
@@ -504,6 +511,7 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
   <nav class="mainnav" aria-label="Hoofdmenu">
     <button class="pill pill-on tab-btn" data-tab="wanted" aria-current="page">Wanted</button>
     <button class="pill tab-btn" data-tab="activity">Activity<b id="act-count" hidden></b></button>
+    <button class="pill tab-btn" data-tab="discover">Ontdekken</button>
     <button class="pill tab-btn" data-tab="kindle">Kindle</button>
     <button class="pill tab-btn" data-tab="settings">Instellingen</button>
   </nav>
@@ -589,6 +597,17 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
       <button class="chip rec-filter" data-rf="failed" aria-pressed="false" onclick="setRecFilter('failed')">Fouten</button>
     </div>
     <div id="activity-recent"></div>
+  </section>
+
+  <!-- ================= ONTDEKKEN ================= -->
+  <section id="discover" class="panel" aria-label="Ontdekken">
+    <h1 class="ptitle">Ontdekken</h1>
+    <p class="lead">Bestsellers en trends van het moment. Engelstalige lijsten zijn voor boeken die je in het Engels leest, de Nederlandse lijst voor Nederlandstalige boeken. Voeg toe wat je wilt lezen; er wordt niets automatisch toegevoegd.</p>
+    <div id="disc-msg" aria-live="polite"></div>
+    <div class="chips" id="disc-regions" role="group" aria-label="Regio"></div>
+    <div class="chips" id="disc-lists" role="group" aria-label="Lijst" style="margin-top:12px"></div>
+    <div class="disc-meta" id="disc-meta"></div>
+    <div id="disc-list"></div>
   </section>
 
   <!-- ================= KINDLE ================= -->
@@ -711,6 +730,13 @@ input[type=checkbox].sw:checked::after{left:23px;top:3px;background:var(--on-acc
         <button class="btn" type="button" onclick="testGoogle()"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Sleutel testen</button>
       </div>
       <div class="hint" id="google_books_key_hint"></div>
+      <label class="fl" for="nyt_api_key">NYT Books API-sleutel <span class="hint">(optioneel — voor de New York Times-lijsten bij Ontdekken)</span></label>
+      <div class="frow">
+        <input class="field" id="nyt_api_key" type="password" autocomplete="new-password" placeholder="opnieuw invullen om te wijzigen">
+        <button class="btn" type="button" onclick="testNyt()"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Sleutel testen</button>
+      </div>
+      <div class="hint" id="nyt_api_key_hint"></div>
+      <p class="hint">Aanmaken (gratis): ga naar <a href="https://developer.nytimes.com/get-started" target="_blank" rel="noopener">developer.nytimes.com</a> → maak een account → <i>Apps</i> → <i>+ New App</i> → zet <b>Books API</b> aan → maak de app en kopieer de <i>API Key</i>.</p>
     </section>
 
     <section class="setcard" id="set-kindle">
@@ -959,6 +985,7 @@ document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', (
   showTab(b.dataset.tab);
   if (b.dataset.tab === 'settings') loadSettings();
   if (b.dataset.tab === 'kindle') loadKindle();
+  if (b.dataset.tab === 'discover') loadDiscover();
   clearInterval(activityTimer);
   if (b.dataset.tab === 'activity') {
     loadActivity();
@@ -1294,6 +1321,133 @@ async function rescanLibrary() {
   wantedMsg(d.lost?.length ? 'err' : 'ok',
     parts.length ? parts.join(' · ') : 'Bibliotheek is in orde — niks aangepast.');
   loadBooks();
+}
+
+/* ================= Ontdekken ================= */
+let discCatalog = null, discRegion = null, discList = null, discItems = [];
+let discToken = 0;
+try { discRegion = localStorage.getItem('discRegion'); discList = localStorage.getItem('discList'); } catch (e) {}
+
+async function loadDiscover() {
+  try { if (!_allBooks.length) await loadBooks(); } catch (e) {}
+  if (!discCatalog) {
+    try { discCatalog = await (await fetch('/api/charts')).json(); }
+    catch (e) { $('disc-list').innerHTML = noteHtml('err', 'Kon de lijsten niet laden.'); return; }
+  }
+  if (!discCatalog.regions.find(r => r.id === discRegion)) discRegion = discCatalog.regions[0].id;
+  renderDiscNav();
+  const inRegion = discCatalog.lists.filter(l => l.region === discRegion);
+  if (!discList || !inRegion.find(l => l.id === discList)) discList = (inRegion.find(l => !l.needs_key) || inRegion[0]).id;
+  loadDiscList();
+}
+function renderDiscNav() {
+  $('disc-regions').innerHTML = discCatalog.regions.map(r =>
+    `<button class="chip${r.id === discRegion ? ' chip-on' : ''}" aria-pressed="${r.id === discRegion}" onclick="setDiscRegion('${r.id}')">${escapeHtml(r.label)}</button>`).join('');
+  $('disc-lists').innerHTML = discCatalog.lists.filter(l => l.region === discRegion).map(l =>
+    `<button class="chip${l.id === discList ? ' chip-on' : ''}" aria-pressed="${l.id === discList}" onclick="setDiscList('${l.id}')" title="${escapeHtml(l.source)}">${escapeHtml(l.source)} · ${escapeHtml(l.label)}</button>`).join('');
+}
+function setDiscRegion(r) {
+  discRegion = r; discList = null;
+  try { localStorage.setItem('discRegion', r); } catch (e) {}
+  loadDiscover();
+}
+function setDiscList(id) {
+  discList = id;
+  try { localStorage.setItem('discList', id); } catch (e) {}
+  renderDiscNav(); loadDiscList();
+}
+async function loadDiscList(refresh) {
+  const my = ++discToken;
+  const meta = discCatalog.lists.find(l => l.id === discList);
+  $('disc-meta').textContent = '';
+  $('disc-msg').innerHTML = '';
+  if (meta && meta.needs_key) {
+    $('disc-list').innerHTML = `<div class="empty">${icon('key')}<span>Voor de New York Times-lijsten heb je een gratis API-sleutel nodig. Stel die in bij <button class="linkbtn" onclick="document.querySelector('.tab-btn[data-tab=settings]').click();setTimeout(()=>document.getElementById('set-bib').scrollIntoView(),100)">Instellingen → Bibliotheek</button>; daar staat ook hoe je hem aanmaakt.</span></div>`;
+    return;
+  }
+  $('disc-list').innerHTML = `<div class="loading"><span class="dot pulse"></span>Lijst ophalen…</div>`;
+  let d;
+  try {
+    const res = await fetch(`/api/charts/${discList}${refresh ? '?refresh=1' : ''}`);
+    d = await res.json();
+    if (!res.ok) throw new Error(d.detail || 'Lijst ophalen mislukt.');
+  } catch (e) {
+    if (my === discToken) $('disc-list').innerHTML = noteHtml('err', e.message) +
+      `<button class="btn" style="margin-top:12px" onclick="loadDiscList(true)">${icon('rescan', 16)}Opnieuw proberen</button>`;
+    return;
+  }
+  if (my !== discToken) return;
+  discItems = d.items.map(it => ({ ...it }));
+  $('disc-meta').innerHTML = `${escapeHtml(d.source)} · ${escapeHtml(d.when || '')} · <a href="${escapeHtml(d.url)}" target="_blank" rel="noopener">bron</a> · <button class="linkbtn" onclick="loadDiscList(true)">vernieuwen</button>`;
+  renderDisc();
+  runDescribeQueue(my);
+}
+function discCard(it, i) {
+  const listed = onList(it);
+  const desc = it.description;
+  return `<article class="card" role="listitem" data-di="${i}">
+    <div class="cov" style="box-shadow:var(--shadow-1)">${coverHtml(it)}
+      <span class="stk" style="background:var(--hi);color:var(--on-hi)">#${it.rank}</span>
+    </div>
+    <div><div class="ctitle" title="${escapeHtml(it.title)}">${escapeHtml(it.title)}</div>
+      <div class="cby">${escapeHtml(it.author || 'onbekende auteur')}${it.year ? ' · ' + it.year : ''}</div></div>
+    ${it.weeks ? `<div class="tags"><span class="tag">${it.weeks} ${it.weeks === 1 ? 'week' : 'weken'} in de lijst</span></div>` : ''}
+    <div class="cdesc" id="dd-${i}">${desc ? discDescHtml(i, desc) : '<span class="ink-3">beschrijving laden…</span>'}</div>
+    <div>${listed ? `<span class="cstatus is-done">${icon('check')}Op je lijst</span>`
+      : `<button class="btn btn-acc btn-sm" onclick="addDisc(${i}, this)">${icon('plus', 16)}Toevoegen</button>`}</div>
+  </article>`;
+}
+function discDescHtml(i, desc) {
+  const long = desc.length > 170;
+  return `<span class="dtext clamp">${escapeHtml(desc)}</span>${long ? ` <button class="linkbtn" onclick="toggleDesc(${i}, this)">meer</button>` : ''}`;
+}
+function toggleDesc(i, btn) {
+  const t = btn.previousElementSibling.classList;
+  t.toggle('clamp'); btn.textContent = t.contains('clamp') ? 'meer' : 'minder';
+}
+function renderDisc() {
+  if (!discItems.length) { $('disc-list').innerHTML = `<div class="empty">${icon('book')}<span>Deze lijst is leeg.</span></div>`; return; }
+  $('disc-list').innerHTML = `<div class="grid" role="list">${discItems.map(discCard).join('')}</div>`;
+}
+// beschrijvingen (en ISBN/jaar) rustig één voor één ophalen
+async function runDescribeQueue(token) {
+  const todo = discItems.map((it, i) => i).filter(i => !discItems[i].description);
+  let next = 0;
+  const worker = async () => {
+    while (next < todo.length && token === discToken) {
+      const i = todo[next++]; const it = discItems[i];
+      try {
+        const res = await fetch('/api/charts/describe', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: it.title, author: it.author || '', isbn: it.isbn || '', apple_id: it.apple_id || '',
+            country: it.country || 'gb', language: it.language || 'en' })
+        });
+        const d = await res.json();
+        if (token !== discToken) return;
+        if (d.description) it.description = d.description;
+        if (d.isbn && !it.isbn) it.isbn = d.isbn;
+        if (d.year && !it.year) it.year = d.year;
+        if (d.cover_url && !it.cover_url) it.cover_url = d.cover_url;
+      } catch (e) { /* stil */ }
+      const el = $('dd-' + i);
+      if (el) el.innerHTML = it.description ? discDescHtml(i, it.description) : '<span class="ink-3">geen beschrijving gevonden</span>';
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+}
+async function addDisc(i, btn) {
+  const it = discItems[i]; if (!it) return;
+  btn.disabled = true;
+  const payload = { title: it.title, author: it.author || '', language: it.language || null, isbn: it.isbn || null,
+    cover_url: it.cover_url || null, description: it.description || null, year: it.year || null, source_id: null };
+  try {
+    const res = await fetch('/api/books', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const d = await res.json();
+    if (!res.ok) { $('disc-msg').innerHTML = noteHtml('err', d.detail || 'Toevoegen mislukt.'); btn.disabled = false; return; }
+    btn.replaceWith(Object.assign(document.createElement('span'), { className: 'cstatus is-done', innerHTML: icon('check') + 'Op je lijst' }));
+    $('disc-msg').innerHTML = noteHtml('ok', `"${it.title}" toegevoegd${d.note ? ' — ' + d.note : ''}.`);
+    loadBooks();
+  } catch (e) { $('disc-msg').innerHTML = noteHtml('err', 'Fout: ' + e.message); btn.disabled = false; }
 }
 
 /* ================= Kindle ================= */
@@ -2002,6 +2156,8 @@ async function loadSettings() {
   $('zlib_password').value = '';
   $('annas_key').value = '';
   $('google_books_key').value = '';
+  $('nyt_api_key').value = '';
+  s.nyt_api_key_set ? setHint('nyt_api_key_hint', 'ok', 'opgeslagen (laat leeg om te behouden)') : setHint('nyt_api_key_hint', '', 'Nog geen sleutel — de NYT-lijsten bij Ontdekken blijven dan uit.');
   set('kindle_email', s.kindle_email); set('smtp_host', s.smtp_host); set('smtp_port', s.smtp_port || 587);
   set('smtp_user', s.smtp_user); set('smtp_from', s.smtp_from); $('smtp_password').value = '';
   s.smtp_password_set ? setHint('smtp_hint', 'ok', 'wachtwoord opgeslagen (laat leeg om te behouden)') : setHint('smtp_hint', '', 'Nog niets ingesteld.');
@@ -2052,6 +2208,7 @@ function settingsPayload() {
     zlib_password: $('zlib_password').value,
     annas_key: $('annas_key').value.trim(),
     google_books_key: $('google_books_key').value.trim(),
+    nyt_api_key: $('nyt_api_key').value.trim(),
     kindle_email: $('kindle_email').value.trim(),
     smtp_host: $('smtp_host').value.trim(),
     smtp_port: parseInt($('smtp_port').value) || 587,
@@ -2092,6 +2249,14 @@ async function testGoogle() {
   const res = await fetch('/api/settings/test-google', { method:'POST' });
   const d = await res.json();
   showMsg(res.ok ? 'ok' : 'err', res.ok ? (d.detail || 'Sleutel werkt.') : d.detail);
+  loadSettings();
+}
+async function testNyt() {
+  await saveSettingsQuiet();
+  const res = await fetch('/api/settings/test-nyt', { method:'POST' });
+  const d = await res.json();
+  showMsg(res.ok ? 'ok' : 'err', d.detail);
+  if (res.ok) discCatalog = null;
   loadSettings();
 }
 async function testKindle() {

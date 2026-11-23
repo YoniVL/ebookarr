@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import __version__, db, kindle, logsetup, metadata, opds, scheduler, services, sources
+from . import __version__, charts, db, kindle, logsetup, metadata, opds, scheduler, services, sources
 
 logsetup.configure()
 logging.getLogger("ebookarr").info("EbookArr start - versie %s", __version__)
@@ -73,6 +73,7 @@ class SettingsIn(BaseModel):
     zlib_password: str = ""
     annas_key: str = ""
     google_books_key: str = ""
+    nyt_api_key: str = ""
     kindle_email: str = ""
     smtp_host: str = ""
     smtp_port: int = 587
@@ -107,6 +108,15 @@ class BookMetaIn(BaseModel):
 class CoverIn(BaseModel):
     data: str | None = None      # data-URL (base64) van een gekozen bestand
     url: str | None = None       # of een link naar een afbeelding
+
+
+class DescribeIn(BaseModel):
+    title: str
+    author: str = ""
+    isbn: str = ""
+    apple_id: str | int | None = None
+    country: str = "gb"
+    language: str = "en"
 
 
 class KindleSendIn(BaseModel):
@@ -146,7 +156,7 @@ def get_settings():
     s = db.get_all_settings()
     for k in ("qbittorrent_password", "prowlarr_api_key", "zlib_password",
               "zlib_email", "annas_key", "zlib_session", "opds_password",
-              "google_books_key", "smtp_password"):
+              "google_books_key", "smtp_password", "nyt_api_key"):
         s.pop(k, None)
     s["qbittorrent_password_set"] = bool(db.get_setting("qbittorrent_password"))
     s["prowlarr_api_key_set"] = bool(db.get_setting("prowlarr_api_key"))
@@ -154,6 +164,7 @@ def get_settings():
     s["zlib_email_set"] = bool(db.get_setting("zlib_email"))
     s["annas_key_set"] = bool(db.get_setting("annas_key"))
     s["google_books_key_set"] = bool(db.get_setting("google_books_key"))
+    s["nyt_api_key_set"] = bool(db.get_setting("nyt_api_key"))
     s["smtp_password_set"] = bool(db.get_setting("smtp_password"))
     s["opds_password_set"] = bool(db.get_setting("opds_password"))
     s["opds_url"] = f"http://{_lan_ip()}:8686/opds"
@@ -218,6 +229,8 @@ def save_settings(payload: SettingsIn):
     if zlib_changed:  # gecachete Z-Library-sessie is nu mogelijk verkeerd
         db.set_setting("zlib_session", "")
 
+    if payload.nyt_api_key and payload.nyt_api_key != _SECRET_PLACEHOLDER:
+        db.set_setting("nyt_api_key", payload.nyt_api_key.strip())
     db.set_setting("kindle_email", payload.kindle_email.strip())
     db.set_setting("smtp_host", payload.smtp_host.strip())
     db.set_setting("smtp_port", str(payload.smtp_port or 587))
@@ -285,6 +298,36 @@ def kindle_mark(payload: KindleMarkIn):
         _get_book_or_404(i)
         db.set_kindle_sent(i, payload.sent)
     return {"count": len(payload.ids)}
+
+
+@app.post("/api/settings/test-nyt")
+def test_nyt():
+    try:
+        d = charts.get_list("nyt-hardcover-fiction", refresh=True)
+        return {"ok": True, "detail": f"Sleutel werkt — {len(d['items'])} boeken opgehaald."}
+    except charts.ChartError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+# ---------- Ontdekken: bestsellerlijsten ----------
+
+@app.get("/api/charts")
+def charts_catalog():
+    return charts.catalog()
+
+
+@app.get("/api/charts/{list_id}")
+def charts_list(list_id: str, refresh: bool = False):
+    try:
+        return charts.get_list(list_id, refresh=refresh)
+    except charts.ChartError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+
+@app.post("/api/charts/describe")
+def charts_describe(payload: DescribeIn):
+    return charts.describe(payload.title, payload.author, payload.isbn,
+                           str(payload.apple_id or ""), payload.country, payload.language)
 
 
 @app.post("/api/settings/test-qbittorrent")
