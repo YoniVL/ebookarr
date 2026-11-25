@@ -306,8 +306,16 @@ def search(book: dict):
             s, domain = _ensure_session()
             r = _request_solving(s, domain, "POST", f"https://{domain}/eapi/book/search",
                                  data=payload, timeout=25)
-        books = r.json().get("books", [])
+        j = r.json()
+        if not j.get("success") and "not found" not in str(j.get("error", "")).lower():
+            # bv. 400 {"error": "Access denied"}: de zoek-API weigert dit account/verzoek.
+            # Niet stilletjes als 'geen resultaten' behandelen.
+            raise RuntimeError(f"de server weigerde het zoeken ({j.get('error') or r.status_code})")
+        books = j.get("books", [])
         _mark(True)
+    except RuntimeError as e:
+        _mark(False, str(e))
+        raise RuntimeError(f"Z-Library: {e}") from e
     except (requests.RequestException, ValueError) as e:
         _mark(False, str(e))
         raise RuntimeError(f"Z-Library: zoeken mislukt ({e})") from e
